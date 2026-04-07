@@ -8,12 +8,12 @@ from typing import TYPE_CHECKING
 from homeassistant.components.bluetooth import async_ble_device_from_address
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .ble_client import PetkitBleClient, PetkitFountainData
-from .const import CONF_ADDRESS, CONF_MODEL, CONF_NAME, DOMAIN, POLL_INTERVAL
-
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
+
+from .ble_client import PetkitBleClient, PetkitFountainData
+from .const import CONF_ADDRESS, CONF_MODEL, CONF_NAME, DOMAIN, POLL_INTERVAL
 
 _LOGGER = logging.getLogger(__name__)
 
