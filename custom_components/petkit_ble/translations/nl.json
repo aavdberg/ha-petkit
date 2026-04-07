@@ -58,10 +58,20 @@
       "dnd_active": {"name": "Niet storen"},
       "pet_detected": {"name": "Huisdier drinkt"},
       "on_ac_power": {"name": "Netstroom"},
-      "low_battery": {"name": "Batterij bijna leeg"}
+      "low_battery": {"name": "Batterij bijna leeg"},
+      "suspended": {"name": "Pomp gepauzeerd"}
     },
     "button": {
       "reset_filter": {"name": "Filter resetten"}
+    },
+    "select": {
+      "mode": {
+        "name": "Modus",
+        "state": {
+          "normal": "Normaal",
+          "smart": "Smart"
+        }
+      }
     },
     "switch": {
       "power": {"name": "Aan/Uit"}

@@ -58,10 +58,20 @@
       "dnd_active": {"name": "Do Not Disturb"},
       "pet_detected": {"name": "Pet Drinking"},
       "on_ac_power": {"name": "AC Power"},
-      "low_battery": {"name": "Low Battery"}
+      "low_battery": {"name": "Low Battery"},
+      "suspended": {"name": "Pump Suspended"}
     },
     "button": {
       "reset_filter": {"name": "Reset Filter"}
+    },
+    "select": {
+      "mode": {
+        "name": "Mode",
+        "state": {
+          "normal": "Normal",
+          "smart": "Smart"
+        }
+      }
     },
     "switch": {
       "power": {"name": "Power"}
