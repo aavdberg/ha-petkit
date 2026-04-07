@@ -181,9 +181,15 @@ class PetkitBleClient:
     def _on_notify(self, _sender: int, data: bytearray) -> None:
         """Handle incoming BLE notification data."""
         self._rx_buf.extend(data)
-        if FRAME_END in self._rx_buf:
-            self._last_response = bytes(self._rx_buf)
-            self._rx_buf.clear()
+        # Need at least header(3) + cmd/type/seq/len/reserved(5) = 8 bytes to read length
+        if len(self._rx_buf) < 8:
+            return
+        data_len = self._rx_buf[6]
+        # Total frame = header(3) + meta(5) + payload(data_len) + end(1)
+        expected_len = 8 + data_len + 1
+        if len(self._rx_buf) >= expected_len and self._rx_buf[expected_len - 1] == FRAME_END:
+            self._last_response = bytes(self._rx_buf[:expected_len])
+            del self._rx_buf[:expected_len]
             self._rx_event.set()
 
     # ------------------------------------------------------------------
@@ -234,6 +240,8 @@ class PetkitBleClient:
         await self._client.start_notify(BLE_NOTIFY_UUID, self._on_notify)
         self._rx_buf.clear()
         self._seq = 0
+        # Allow device time to settle before sending first command
+        await asyncio.sleep(0.5)
 
     async def disconnect(self) -> None:
         """Disconnect from the device, suppressing cleanup errors."""
@@ -253,7 +261,12 @@ class PetkitBleClient:
         """Run the full 5-step Petkit authentication sequence."""
         # Step 1: CMD 213 — get device id & serial
         payload_213 = await self._send_and_wait(CMD_GET_DEVICE_INFO, FRAME_TYPE_SEND, [0, 0])
-        if payload_213 is None or len(payload_213) < 23:
+        if payload_213 is None or len(payload_213) < 8:
+            _LOGGER.error(
+                "CMD 213 failed or response too short (got %d bytes): %s",
+                len(payload_213) if payload_213 is not None else 0,
+                payload_213.hex() if payload_213 is not None else "None",
+            )
             raise RuntimeError("CMD 213 failed or response too short")
 
         device_id_bytes = list(payload_213[2:8])
