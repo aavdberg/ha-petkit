@@ -10,7 +10,7 @@ from homeassistant.components.button import ButtonEntity, ButtonEntityDescriptio
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .ble_client import PetkitBleClient, PetkitFountainData
+from .ble_client import PetkitBleClient
 from .const import CMD_RESET_FILTER, CMD_SET_POWER_MODE, CONF_ADDRESS, CONF_MODEL
 from .coordinator import PetkitBleCoordinator
 from .entity import PetkitBleEntity

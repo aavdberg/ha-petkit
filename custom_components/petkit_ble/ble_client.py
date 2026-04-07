@@ -277,10 +277,10 @@ class PetkitBleClient:
             secret[-2] = 13
             secret[-1] = 37
         # Pad left to 8 bytes
-        secret = [0] * (8 - len(secret)) + secret
+        secret = [*([0] * (8 - len(secret))), *secret]
 
         # device_id padded to 8 bytes (left-pad with zeros)
-        device_id_padded = [0] * (8 - len(device_id_bytes)) + device_id_bytes
+        device_id_padded = [*([0] * (8 - len(device_id_bytes))), *device_id_bytes]
 
         await asyncio.sleep(AUTH_STEP_DELAY)
 
@@ -288,13 +288,13 @@ class PetkitBleClient:
         await self._send_and_wait(
             CMD_AUTH_INIT,
             FRAME_TYPE_SEND,
-            [0, 0] + device_id_padded + secret,
+            [0, 0, *device_id_padded, *secret],
         )
         await asyncio.sleep(AUTH_STEP_DELAY)
 
         # Step 4: CMD 86 — verify auth; response[0]==1 means success
         payload_86 = await self._send_and_wait(
-            CMD_AUTH_VERIFY, FRAME_TYPE_SEND, [0, 0] + secret
+            CMD_AUTH_VERIFY, FRAME_TYPE_SEND, [0, 0, *secret]
         )
         await asyncio.sleep(AUTH_STEP_DELAY)
         if payload_86 is None or len(payload_86) == 0 or payload_86[0] != 1:
