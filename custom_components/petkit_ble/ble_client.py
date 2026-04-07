@@ -23,8 +23,6 @@ from .const import (
     CMD_GET_CONFIG,
     CMD_GET_DEVICE_INFO,
     CMD_GET_STATE,
-    CMD_RESET_FILTER,
-    CMD_SET_POWER_MODE,
     CMD_SET_TIME,
     CTW3_ALIASES,
     DEFAULT_FLOW_DIVISOR,
@@ -267,10 +265,7 @@ class PetkitBleClient:
 
         # Step 2: Compute secret
         # CTW3 always uses all-zero device_id for secret computation
-        if alias in ZERO_DEVICE_ID_MODELS:
-            secret_source = [0] * 6
-        else:
-            secret_source = device_id_bytes
+        secret_source = [0] * 6 if alias in ZERO_DEVICE_ID_MODELS else device_id_bytes
 
         secret = list(reversed(secret_source))
         if secret[-1] == 0 and secret[-2] == 0:

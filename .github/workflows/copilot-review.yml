@@ -12,9 +12,13 @@ jobs:
     permissions:
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Copilot Code Review
-        uses: github/copilot-pull-request-review@main
+      - name: Request Copilot as reviewer
+        uses: actions/github-script@v7
         with:
-          review-type: comment
+          script: |
+            await github.rest.pulls.requestReviewers({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+              reviewers: ['Copilot'],
+            });
