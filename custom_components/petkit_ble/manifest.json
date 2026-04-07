@@ -5,9 +5,9 @@
   "config_flow": true,
   "documentation": "https://github.com/aavdberg/ha-petkit",
   "issue_tracker": "https://github.com/aavdberg/ha-petkit/issues",
-  "requirements": ["bleak>=0.22.0"],
-  "dependencies": ["bluetooth"],
-  "after_dependencies": ["bluetooth_adapters"],
+  "requirements": ["bleak>=0.22.0", "bleak-retry-connector>=3.0.0"],
+  "dependencies": ["bluetooth", "bluetooth_adapters"],
+  "after_dependencies": [],
   "bluetooth": [
     {"connectable": true, "local_name": "Petkit_W4*"},
     {"connectable": true, "local_name": "Petkit_W5*"},
