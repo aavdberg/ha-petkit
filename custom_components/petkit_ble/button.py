@@ -1,4 +1,5 @@
 """Button platform for Petkit BLE."""
+
 from __future__ import annotations
 
 import logging
@@ -65,10 +66,7 @@ async def async_setup_entry(
 ) -> None:
     """Set up Petkit BLE buttons from a config entry."""
     coordinator: PetkitBleCoordinator = config_entry.runtime_data
-    async_add_entities(
-        PetkitBleButton(coordinator, description)
-        for description in BUTTON_DESCRIPTIONS
-    )
+    async_add_entities(PetkitBleButton(coordinator, description) for description in BUTTON_DESCRIPTIONS)
 
 
 class PetkitBleButton(PetkitBleEntity, ButtonEntity):
@@ -90,9 +88,7 @@ class PetkitBleButton(PetkitBleEntity, ButtonEntity):
         address: str = self.coordinator.config_entry.data[CONF_ADDRESS]
         alias: str = self.coordinator.config_entry.data[CONF_MODEL]
 
-        ble_device = async_ble_device_from_address(
-            self.coordinator.hass, address, connectable=True
-        )
+        ble_device = async_ble_device_from_address(self.coordinator.hass, address, connectable=True)
         if ble_device is None:
             _LOGGER.warning("Cannot press %s: device %s not found", self.entity_description.key, address)
             return

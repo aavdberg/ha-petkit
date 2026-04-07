@@ -1,4 +1,5 @@
 """Switch platform for Petkit BLE (power switch)."""
+
 from __future__ import annotations
 
 import logging
@@ -60,17 +61,13 @@ class PetkitPowerSwitch(PetkitBleEntity, SwitchEntity):
         alias: str = self.coordinator.config_entry.data[CONF_MODEL]
         mode = self.coordinator.data.mode if self.coordinator.data else 1
 
-        ble_device = async_ble_device_from_address(
-            self.coordinator.hass, address, connectable=True
-        )
+        ble_device = async_ble_device_from_address(self.coordinator.hass, address, connectable=True)
         if ble_device is None:
             _LOGGER.warning("Cannot set power: device %s not found", address)
             return
 
         client = PetkitBleClient(ble_device)
-        success = await client.async_send_command(
-            CMD_SET_POWER_MODE, [power_state, mode], alias
-        )
+        success = await client.async_send_command(CMD_SET_POWER_MODE, [power_state, mode], alias)
         if success:
             await self.coordinator.async_request_refresh()
         else:

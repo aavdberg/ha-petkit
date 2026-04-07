@@ -1,4 +1,5 @@
 """DataUpdateCoordinator for Petkit BLE."""
+
 from __future__ import annotations
 
 import logging
@@ -36,21 +37,15 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
 
     async def _async_update_data(self) -> PetkitFountainData:
         """Fetch the latest data from the fountain."""
-        ble_device = async_ble_device_from_address(
-            self.hass, self._address, connectable=True
-        )
+        ble_device = async_ble_device_from_address(self.hass, self._address, connectable=True)
         if ble_device is None:
-            raise UpdateFailed(
-                f"Petkit fountain {self._name} ({self._address}) not reachable via Bluetooth"
-            )
+            raise UpdateFailed(f"Petkit fountain {self._name} ({self._address}) not reachable via Bluetooth")
 
         client = PetkitBleClient(ble_device)
         try:
             data = await client.async_poll(self._alias)
         except Exception as exc:
-            raise UpdateFailed(
-                f"Error communicating with {self._name}: {exc}"
-            ) from exc
+            raise UpdateFailed(f"Error communicating with {self._name}: {exc}") from exc
 
         _LOGGER.debug("Polled %s: power=%s mode=%s", self._name, data.power_status, data.mode)
         return data
