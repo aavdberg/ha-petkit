@@ -23,6 +23,7 @@ from .const import (
     CMD_GET_BATTERY,
     CMD_GET_CONFIG,
     CMD_GET_DEVICE_INFO,
+    CMD_GET_FIRMWARE,
     CMD_GET_STATE,
     CMD_SET_TIME,
     CTW3_ALIASES,
@@ -411,6 +412,12 @@ class PetkitBleClient:
         try:
             await self._connect()
             await self._authenticate(alias)
+
+            # CMD 200 — firmware version: byte[0]=hardware, byte[1]=firmware
+            payload_200 = await self._send_and_wait(CMD_GET_FIRMWARE, FRAME_TYPE_SEND, [])
+            if payload_200 is not None and len(payload_200) >= 2:
+                data.firmware = f"{payload_200[0]}.{payload_200[1]}"
+                _LOGGER.debug("CMD 200 firmware payload: %s → %s", payload_200.hex(), data.firmware)
 
             # CMD 210 — device state
             payload_210 = await self._send_and_wait(CMD_GET_STATE, FRAME_TYPE_SEND, [0, 0])
