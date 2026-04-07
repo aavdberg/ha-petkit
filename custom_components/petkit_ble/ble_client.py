@@ -7,8 +7,7 @@ import logging
 import math
 import struct
 import time
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from dataclasses import dataclass
 
 from bleak import BleakClient
 from bleak.backends.device import BLEDevice
