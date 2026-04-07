@@ -1,0 +1,17 @@
+{
+  "domain": "petkit_ble",
+  "name": "Petkit BLE",
+  "version": "1.0.0",
+  "config_flow": true,
+  "documentation": "https://github.com/aavdberg/ha-petkit",
+  "requirements": ["bleak>=0.22.0"],
+  "dependencies": ["bluetooth"],
+  "after_dependencies": ["bluetooth_adapters"],
+  "bluetooth": [
+    {"connectable": true, "local_name": "Petkit_W4*"},
+    {"connectable": true, "local_name": "Petkit_W5*"},
+    {"connectable": true, "local_name": "Petkit_CTW*"}
+  ],
+  "codeowners": ["@aavdberg"],
+  "iot_class": "local_polling"
+}

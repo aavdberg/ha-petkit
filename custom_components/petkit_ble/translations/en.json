@@ -1,0 +1,59 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Petkit Water Fountain",
+        "description": "Select a discovered Petkit fountain, or enter its Bluetooth MAC address manually.",
+        "data": {
+          "address": "Bluetooth MAC address",
+          "name": "Device name (optional)"
+        }
+      },
+      "bluetooth_confirm": {
+        "title": "Confirm Petkit Fountain",
+        "description": "Do you want to set up the **{name}** fountain ({address})?"
+      }
+    },
+    "error": {
+      "no_devices_found": "No Petkit fountains were found nearby. Enter the MAC address manually.",
+      "cannot_connect": "Could not connect to the device. Make sure it is powered on and in range.",
+      "unknown": "An unexpected error occurred."
+    },
+    "abort": {
+      "already_configured": "This device is already configured.",
+      "no_devices_found": "No Petkit fountains were found."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "filter_percent": {"name": "Filter Life"},
+      "pump_runtime_today": {"name": "Pump Runtime Today"},
+      "pump_runtime": {"name": "Total Pump Runtime"},
+      "battery_percent": {"name": "Battery"},
+      "battery_voltage_mv": {"name": "Battery Voltage"},
+      "water_purified_today": {"name": "Water Purified Today"},
+      "energy_today": {"name": "Energy Today"},
+      "filter_days_remaining": {"name": "Filter Days Remaining"},
+      "firmware": {"name": "Firmware"},
+      "rssi": {"name": "Signal Strength"}
+    },
+    "binary_sensor": {
+      "pump_running": {"name": "Pump Running"},
+      "warning_water_missing": {"name": "Water Missing"},
+      "warning_filter": {"name": "Filter Warning"},
+      "warning_breakdown": {"name": "Hardware Failure"},
+      "dnd_active": {"name": "Do Not Disturb"},
+      "pet_detected": {"name": "Pet Drinking"},
+      "on_ac_power": {"name": "AC Power"},
+      "low_battery": {"name": "Low Battery"}
+    },
+    "button": {
+      "reset_filter": {"name": "Reset Filter"},
+      "pump_on": {"name": "Pump On"},
+      "pump_off": {"name": "Pump Off"}
+    },
+    "switch": {
+      "power": {"name": "Power"}
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Petkit Water Fountain",
+        "description": "Select a discovered Petkit fountain, or enter its Bluetooth MAC address manually.",
+        "data": {
+          "address": "Bluetooth MAC address",
+          "name": "Device name (optional)"
+        }
+      },
+      "bluetooth_confirm": {
+        "title": "Confirm Petkit Fountain",
+        "description": "Do you want to set up the **{name}** fountain ({address})?"
+      }
+    },
+    "error": {
+      "no_devices_found": "No Petkit fountains were found nearby. Enter the MAC address manually.",
+      "cannot_connect": "Could not connect to the device. Make sure it is powered on and in range.",
+      "unknown": "An unexpected error occurred."
+    },
+    "abort": {
+      "already_configured": "This device is already configured.",
+      "no_devices_found": "No Petkit fountains were found."
+    }
+  }
+}
