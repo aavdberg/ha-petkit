@@ -14,10 +14,10 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.const import (
     PERCENTAGE,
+    SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
     EntityCategory,
     UnitOfElectricPotential,
     UnitOfEnergy,
-    UnitOfSignalStrength,
     UnitOfTime,
     UnitOfVolume,
 )
@@ -115,7 +115,7 @@ SENSOR_DESCRIPTIONS: tuple[PetkitSensorEntityDescription, ...] = (
     PetkitSensorEntityDescription(
         key="rssi",
         translation_key="rssi",
-        native_unit_of_measurement=UnitOfSignalStrength.DECIBELS_MILLIWATT,
+        native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
         device_class=SensorDeviceClass.SIGNAL_STRENGTH,
         entity_category=EntityCategory.DIAGNOSTIC,
         state_class=SensorStateClass.MEASUREMENT,
