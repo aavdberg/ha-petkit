@@ -70,7 +70,7 @@ class PetkitBleConfigFlow(ConfigFlow, domain=DOMAIN):
     @callback
     def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
         """Return the options flow handler."""
-        return PetkitBleOptionsFlow(config_entry)
+        return PetkitBleOptionsFlow()
 
     # ------------------------------------------------------------------
     # Auto-discovery (HA calls this when manifest bluetooth matcher fires)
@@ -165,22 +165,15 @@ class PetkitBleConfigFlow(ConfigFlow, domain=DOMAIN):
 class PetkitBleOptionsFlow(OptionsFlow):
     """Handle options for Petkit BLE (e.g. enable debug logging)."""
 
-    def __init__(self, config_entry: ConfigEntry) -> None:
-        """Initialise the options flow."""
-        self._config_entry = config_entry
-
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Show and handle the options form."""
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 
-        current_debug = self._config_entry.options.get(CONF_DEBUG, False)
-
         return self.async_show_form(
             step_id="init",
-            data_schema=vol.Schema(
-                {
-                    vol.Optional(CONF_DEBUG, default=current_debug): bool,
-                }
+            data_schema=self.add_suggested_values_to_schema(
+                vol.Schema({vol.Optional(CONF_DEBUG): bool}),
+                self.config_entry.options or {CONF_DEBUG: False},
             ),
         )
