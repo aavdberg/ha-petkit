@@ -1,0 +1,19 @@
+name: Copilot Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  copilot-review:
+    name: Request Copilot Code Review
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Copilot Code Review
+        uses: github/copilot-pull-request-review@main
+        with:
+          review-type: comment
