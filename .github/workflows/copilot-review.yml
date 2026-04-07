@@ -3,6 +3,7 @@ name: Copilot Review
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+    branches: ["main", "dev"]
 
 jobs:
   copilot-review:
