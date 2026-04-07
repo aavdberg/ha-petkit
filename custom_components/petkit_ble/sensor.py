@@ -2,8 +2,8 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -24,12 +24,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .ble_client import PetkitFountainData
-from .const import DOMAIN
 from .coordinator import PetkitBleCoordinator
 from .entity import PetkitBleEntity
-
-if __name__ == "homeassistant.components.petkit_ble.sensor":
-    pass
 
 _LOGGER = logging.getLogger(__name__)
 

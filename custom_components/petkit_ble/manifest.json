@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "config_flow": true,
   "documentation": "https://github.com/aavdberg/ha-petkit",
+  "issue_tracker": "https://github.com/aavdberg/ha-petkit/issues",
   "requirements": ["bleak>=0.22.0"],
   "dependencies": ["bluetooth"],
   "after_dependencies": ["bluetooth_adapters"],
