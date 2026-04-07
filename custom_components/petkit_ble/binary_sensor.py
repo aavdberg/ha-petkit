@@ -11,6 +11,7 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
     BinarySensorEntityDescription,
 )
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -79,6 +80,13 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[PetkitBinarySensorDescription, ...] = (
         translation_key="low_battery",
         device_class=BinarySensorDeviceClass.BATTERY,
         value_fn=lambda d: bool(d.low_battery),
+        available_fn=lambda d: d.is_ctw3,
+    ),
+    PetkitBinarySensorDescription(
+        key="suspended",
+        translation_key="suspended",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda d: bool(d.suspend_status),
         available_fn=lambda d: d.is_ctw3,
     ),
 )

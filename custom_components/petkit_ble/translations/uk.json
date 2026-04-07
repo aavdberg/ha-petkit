@@ -58,10 +58,20 @@
       "dnd_active": {"name": "Не турбувати"},
       "pet_detected": {"name": "Тварина п'є"},
       "on_ac_power": {"name": "Мережеве живлення"},
-      "low_battery": {"name": "Низький заряд батареї"}
+      "low_battery": {"name": "Низький заряд батареї"},
+      "suspended": {"name": "Насос призупинено"}
     },
     "button": {
       "reset_filter": {"name": "Скинути фільтр"}
+    },
+    "select": {
+      "mode": {
+        "name": "Режим",
+        "state": {
+          "normal": "Нормальний",
+          "smart": "Смарт"
+        }
+      }
     },
     "switch": {
       "power": {"name": "Живлення"}
