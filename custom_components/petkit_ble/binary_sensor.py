@@ -1,4 +1,5 @@
 """Binary sensor platform for Petkit BLE."""
+
 from __future__ import annotations
 
 import logging
@@ -90,10 +91,7 @@ async def async_setup_entry(
 ) -> None:
     """Set up Petkit BLE binary sensors from a config entry."""
     coordinator: PetkitBleCoordinator = config_entry.runtime_data
-    async_add_entities(
-        PetkitBleBinarySensor(coordinator, description)
-        for description in BINARY_SENSOR_DESCRIPTIONS
-    )
+    async_add_entities(PetkitBleBinarySensor(coordinator, description) for description in BINARY_SENSOR_DESCRIPTIONS)
 
 
 class PetkitBleBinarySensor(PetkitBleEntity, BinarySensorEntity):

@@ -1,11 +1,11 @@
 """Config flow for Petkit BLE integration."""
+
 from __future__ import annotations
 
 import logging
 from typing import Any
 
 import voluptuous as vol
-
 from homeassistant.components.bluetooth import (
     BluetoothServiceInfoBleak,
     async_discovered_service_info,
@@ -68,9 +68,7 @@ class PetkitBleConfigFlow(ConfigFlow, domain=DOMAIN):
     # Auto-discovery (HA calls this when manifest bluetooth matcher fires)
     # ------------------------------------------------------------------
 
-    async def async_step_bluetooth(
-        self, discovery_info: BluetoothServiceInfoBleak
-    ) -> ConfigFlowResult:
+    async def async_step_bluetooth(self, discovery_info: BluetoothServiceInfoBleak) -> ConfigFlowResult:
         """Handle a Bluetooth discovery from HA's auto-discovery."""
         await self.async_set_unique_id(discovery_info.address.upper())
         self._abort_if_unique_id_configured()
@@ -79,9 +77,7 @@ class PetkitBleConfigFlow(ConfigFlow, domain=DOMAIN):
         self.context["title_placeholders"] = {"name": discovery_info.name}
         return await self.async_step_bluetooth_confirm()
 
-    async def async_step_bluetooth_confirm(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_bluetooth_confirm(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Confirm auto-discovered Petkit fountain."""
         assert self._bluetooth_info is not None
         info = self._bluetooth_info
@@ -106,9 +102,7 @@ class PetkitBleConfigFlow(ConfigFlow, domain=DOMAIN):
     # Manual / user-initiated flow
     # ------------------------------------------------------------------
 
-    async def async_step_user(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Scan for nearby Petkit BLE devices and let the user pick one."""
         if user_input is not None:
             address: str = user_input[CONF_ADDRESS].strip().upper()
@@ -137,9 +131,7 @@ class PetkitBleConfigFlow(ConfigFlow, domain=DOMAIN):
 
         if discovered:
             # Show a selector with discovered devices
-            options = {
-                addr: f"{name} ({addr})" for addr, name in discovered.items()
-            }
+            options = {addr: f"{name} ({addr})" for addr, name in discovered.items()}
             return self.async_show_form(
                 step_id="user",
                 data_schema=vol.Schema(

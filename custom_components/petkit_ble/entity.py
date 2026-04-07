@@ -1,4 +1,5 @@
 """Base entity for Petkit BLE."""
+
 from __future__ import annotations
 
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -29,7 +30,4 @@ class PetkitBleEntity(CoordinatorEntity[PetkitBleCoordinator]):
     @property
     def available(self) -> bool:
         """Return True when the coordinator last update succeeded."""
-        return (
-            self.coordinator.last_update_success
-            and self.coordinator.data is not None
-        )
+        return self.coordinator.last_update_success and self.coordinator.data is not None

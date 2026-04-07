@@ -1,4 +1,5 @@
 """Petkit BLE protocol client."""
+
 from __future__ import annotations
 
 import asyncio
@@ -7,8 +8,7 @@ import logging
 import math
 import struct
 import time
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from dataclasses import dataclass
 
 from bleak import BleakClient
 from bleak.backends.device import BLEDevice
@@ -23,8 +23,6 @@ from .const import (
     CMD_GET_CONFIG,
     CMD_GET_DEVICE_INFO,
     CMD_GET_STATE,
-    CMD_RESET_FILTER,
-    CMD_SET_POWER_MODE,
     CMD_SET_TIME,
     CTW3_ALIASES,
     DEFAULT_FLOW_DIVISOR,
@@ -54,8 +52,8 @@ class PetkitFountainData:
     rssi: int | None = None
 
     # Power & mode (CMD 210)
-    power_status: int = 0          # 0=off, 1=on
-    mode: int = 1                  # 1=normal, 2=smart
+    power_status: int = 0  # 0=off, 1=on
+    mode: int = 1  # 1=normal, 2=smart
     running_status: int = 0
     dnd_state: int = 0
 
@@ -82,8 +80,8 @@ class PetkitFountainData:
     module_status: int = 0
 
     # CMD 211 config fields
-    smart_time_on: int = 0         # minutes
-    smart_time_off: int = 0        # minutes
+    smart_time_on: int = 0  # minutes
+    smart_time_off: int = 0  # minutes
     led_switch: int = 0
     led_brightness: int = 1
     do_not_disturb_switch: int = 0
@@ -113,10 +111,7 @@ class PetkitFountainData:
 
         if time_on == 0:
             return math.ceil(self.filter_percent / 100 * FILTER_LIFE_NORMAL_DAYS)
-        return math.ceil(
-            ((self.filter_percent / 100 * FILTER_LIFE_SMART_DAYS) * (time_on + time_off))
-            / time_on
-        )
+        return math.ceil(((self.filter_percent / 100 * FILTER_LIFE_SMART_DAYS) * (time_on + time_off)) / time_on)
 
     @property
     def water_purified_today_liters(self) -> float:
@@ -151,12 +146,7 @@ class PetkitBleClient:
     def _build_frame(self, cmd: int, type_: int, seq: int, data: list[int]) -> bytes:
         """Build a Petkit protocol frame."""
         payload = bytes(data)
-        frame = (
-            FRAME_HEADER
-            + bytes([cmd, type_, seq, len(payload), 0x00])
-            + payload
-            + bytes([FRAME_END])
-        )
+        frame = FRAME_HEADER + bytes([cmd, type_, seq, len(payload), 0x00]) + payload + bytes([FRAME_END])
         return frame
 
     def _parse_frame(self, raw: bytes) -> tuple[int, int, int, bytes] | None:
@@ -267,20 +257,17 @@ class PetkitBleClient:
 
         # Step 2: Compute secret
         # CTW3 always uses all-zero device_id for secret computation
-        if alias in ZERO_DEVICE_ID_MODELS:
-            secret_source = [0] * 6
-        else:
-            secret_source = device_id_bytes
+        secret_source = [0] * 6 if alias in ZERO_DEVICE_ID_MODELS else device_id_bytes
 
         secret = list(reversed(secret_source))
         if secret[-1] == 0 and secret[-2] == 0:
             secret[-2] = 13
             secret[-1] = 37
         # Pad left to 8 bytes
-        secret = [0] * (8 - len(secret)) + secret
+        secret = [*([0] * (8 - len(secret))), *secret]
 
         # device_id padded to 8 bytes (left-pad with zeros)
-        device_id_padded = [0] * (8 - len(device_id_bytes)) + device_id_bytes
+        device_id_padded = [*([0] * (8 - len(device_id_bytes))), *device_id_bytes]
 
         await asyncio.sleep(AUTH_STEP_DELAY)
 
@@ -288,19 +275,16 @@ class PetkitBleClient:
         await self._send_and_wait(
             CMD_AUTH_INIT,
             FRAME_TYPE_SEND,
-            [0, 0] + device_id_padded + secret,
+            [0, 0, *device_id_padded, *secret],
         )
         await asyncio.sleep(AUTH_STEP_DELAY)
 
         # Step 4: CMD 86 — verify auth; response[0]==1 means success
-        payload_86 = await self._send_and_wait(
-            CMD_AUTH_VERIFY, FRAME_TYPE_SEND, [0, 0] + secret
-        )
+        payload_86 = await self._send_and_wait(CMD_AUTH_VERIFY, FRAME_TYPE_SEND, [0, 0, *secret])
         await asyncio.sleep(AUTH_STEP_DELAY)
         if payload_86 is None or len(payload_86) == 0 or payload_86[0] != 1:
             raise RuntimeError(
-                "Authentication failed (CMD 86 response: %s)"
-                % (payload_86.hex() if payload_86 else "None")
+                "Authentication failed (CMD 86 response: %s)" % (payload_86.hex() if payload_86 else "None")
             )
 
         # Step 5: CMD 84 — set device time
