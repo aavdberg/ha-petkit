@@ -5,6 +5,7 @@ import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from homeassistant.components.bluetooth import async_ble_device_from_address
 from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -86,8 +87,6 @@ class PetkitBleButton(PetkitBleEntity, ButtonEntity):
 
     async def async_press(self) -> None:
         """Send the button command to the device."""
-        from homeassistant.components.bluetooth import async_ble_device_from_address
-
         address: str = self.coordinator.config_entry.data[CONF_ADDRESS]
         alias: str = self.coordinator.config_entry.data[CONF_MODEL]
 
