@@ -53,62 +53,63 @@ Communication uses a proprietary BLE protocol over two GATT characteristics (not
 
 ## Development
 
-### Branching strategie
+### Branching Strategy
 
 ```
-feature/* of fix/*
+feature/* or fix/*
         │
         ▼  Pull Request + lint check
-       dev         ← ontwikkeling & testen
+       dev         ← development & testing
         │
         ▼  Pull Request + lint check
-      main         ← productie (HACS-gebruikers)
-                      → automatisch GitHub Release
+      main         ← production (HACS users)
+                      → automatic GitHub Release
 ```
 
-| Branch | Doel | Beschermd |
+| Branch | Purpose | Protected |
 |---|---|---|
-| `main` | Stabiele productie-release | ✅ PR verplicht + lint groen |
-| `dev` | Integratie & testen | ✅ PR verplicht + lint groen |
-| `feature/*` | Nieuwe functionaliteit | Vrij — PR naar `dev` |
-| `fix/*` | Bugfixes | Vrij — PR naar `dev` |
+| `main` | Stable production release | ✅ PR required + lint must pass |
+| `dev` | Integration & testing | ✅ PR required + lint must pass |
+| `feature/*` | New functionality | Free — PR to `dev` |
+| `fix/*` | Bug fixes | Free — PR to `dev` |
 
-### Bijdragen
+### Contributing
 
-1. Fork de repo of maak een branch op basis van `dev`:
+1. Branch off `dev`:
    ```bash
    git checkout dev
-   git checkout -b feature/mijn-functie
+   git checkout -b feature/my-feature
    ```
-2. Maak je wijzigingen en commit:
+2. Commit your changes:
    ```bash
-   git commit -m "feat: beschrijving van de wijziging"
+   git commit -m "feat: description of the change"
    ```
-3. Push je branch en open een **Pull Request naar `dev`**:
+3. Push and open a **Pull Request to `dev`**:
    ```bash
-   git push origin feature/mijn-functie
+   git push origin feature/my-feature
    ```
-4. De lint-check (ruff) en Copilot code review lopen automatisch.
-5. Wanneer `dev` stabiel is, wordt een PR naar `main` geopend voor de release.
+4. The lint check (ruff) and Copilot code review run automatically.
+5. When `dev` is stable, a PR to `main` is opened to trigger a release.
 
 ### Releases
 
-Bij elke merge naar `main` maakt de release-workflow automatisch een GitHub Release aan op basis van de `version` in `manifest.json`.  
-Verhoog de versie in `manifest.json` op de `dev` branch vóór je een release PR maakt.
+Every merge to `main` automatically creates a GitHub Release based on the `version` field in `manifest.json`.  
+Bump the version in `manifest.json` on `dev` before opening a release PR.
 
-### Lokale ontwikkeling
+### Local Development
 
 ```bash
-# Afhankelijkheden installeren
+# Install linter
 pip install ruff
 
-# Lint controleren
+# Check for lint errors
 ruff check custom_components/
 
-# Opmaak controleren
+# Check formatting
 ruff format --check custom_components/
 
-# Automatisch fixen
+# Auto-fix issues
 ruff check --fix custom_components/
 ```
+
 
