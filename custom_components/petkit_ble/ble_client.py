@@ -12,6 +12,7 @@ from dataclasses import dataclass
 
 from bleak import BleakClient
 from bleak.backends.device import BLEDevice
+from bleak_retry_connector import establish_connection
 
 from .const import (
     AUTH_STEP_DELAY,
@@ -224,9 +225,12 @@ class PetkitBleClient:
     # ------------------------------------------------------------------
 
     async def _connect(self) -> None:
-        """Establish BLE connection and start notifications."""
-        self._client = BleakClient(self._device)
-        await self._client.connect()
+        """Establish BLE connection using bleak-retry-connector for reliability."""
+        self._client = await establish_connection(
+            BleakClient,
+            self._device,
+            self._device.address,
+        )
         await self._client.start_notify(BLE_NOTIFY_UUID, self._on_notify)
         self._rx_buf.clear()
         self._seq = 0
