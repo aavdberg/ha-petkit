@@ -1,0 +1,59 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Налаштування фонтану Petkit",
+        "description": "Виберіть знайдений фонтан Petkit або введіть його Bluetooth MAC-адресу вручну.",
+        "data": {
+          "address": "Bluetooth MAC-адреса",
+          "name": "Назва пристрою (необов'язково)"
+        }
+      },
+      "bluetooth_confirm": {
+        "title": "Підтвердження фонтану Petkit",
+        "description": "Ви хочете налаштувати фонтан **{name}** ({address})?"
+      }
+    },
+    "error": {
+      "no_devices_found": "Поблизу не знайдено жодного фонтану Petkit. Введіть MAC-адресу вручну.",
+      "cannot_connect": "Не вдалося підключитися до пристрою. Переконайтеся, що він увімкнений і знаходиться в зоні досяжності.",
+      "unknown": "Сталася неочікувана помилка."
+    },
+    "abort": {
+      "already_configured": "Цей пристрій вже налаштовано.",
+      "no_devices_found": "Фонтани Petkit не знайдено."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "filter_percent": {"name": "Ресурс фільтра"},
+      "pump_runtime_today": {"name": "Час роботи насоса сьогодні"},
+      "pump_runtime": {"name": "Загальний час роботи насоса"},
+      "battery_percent": {"name": "Батарея"},
+      "battery_voltage_mv": {"name": "Напруга батареї"},
+      "water_purified_today": {"name": "Очищена вода сьогодні"},
+      "energy_today": {"name": "Споживання енергії сьогодні"},
+      "filter_days_remaining": {"name": "Залишилось днів фільтра"},
+      "firmware": {"name": "Прошивка"},
+      "rssi": {"name": "Рівень сигналу"}
+    },
+    "binary_sensor": {
+      "pump_running": {"name": "Насос працює"},
+      "warning_water_missing": {"name": "Відсутня вода"},
+      "warning_filter": {"name": "Попередження фільтра"},
+      "warning_breakdown": {"name": "Апаратна несправність"},
+      "dnd_active": {"name": "Не турбувати"},
+      "pet_detected": {"name": "Тварина п'є"},
+      "on_ac_power": {"name": "Мережеве живлення"},
+      "low_battery": {"name": "Низький заряд батареї"}
+    },
+    "button": {
+      "reset_filter": {"name": "Скинути фільтр"},
+      "pump_on": {"name": "Насос увімкнути"},
+      "pump_off": {"name": "Насос вимкнути"}
+    },
+    "switch": {
+      "power": {"name": "Живлення"}
+    }
+  }
+}

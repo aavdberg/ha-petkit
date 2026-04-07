@@ -1,0 +1,59 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Petkit waterfonteintje instellen",
+        "description": "Selecteer een gevonden Petkit-fonteintje, of voer het Bluetooth MAC-adres handmatig in.",
+        "data": {
+          "address": "Bluetooth MAC-adres",
+          "name": "Apparaatnaam (optioneel)"
+        }
+      },
+      "bluetooth_confirm": {
+        "title": "Petkit-fonteintje bevestigen",
+        "description": "Wil je het fonteintje **{name}** ({address}) instellen?"
+      }
+    },
+    "error": {
+      "no_devices_found": "Er zijn geen Petkit-fonteintjes gevonden in de buurt. Voer het MAC-adres handmatig in.",
+      "cannot_connect": "Kan geen verbinding maken met het apparaat. Zorg dat het aan staat en binnen bereik is.",
+      "unknown": "Er is een onverwachte fout opgetreden."
+    },
+    "abort": {
+      "already_configured": "Dit apparaat is al geconfigureerd.",
+      "no_devices_found": "Er zijn geen Petkit-fonteintjes gevonden."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "filter_percent": {"name": "Filterlevensduur"},
+      "pump_runtime_today": {"name": "Pomplooptijd vandaag"},
+      "pump_runtime": {"name": "Totale pomplooptijd"},
+      "battery_percent": {"name": "Batterij"},
+      "battery_voltage_mv": {"name": "Batterijspanning"},
+      "water_purified_today": {"name": "Gezuiverd water vandaag"},
+      "energy_today": {"name": "Energieverbruik vandaag"},
+      "filter_days_remaining": {"name": "Resterende filterdagen"},
+      "firmware": {"name": "Firmware"},
+      "rssi": {"name": "Signaalsterkte"}
+    },
+    "binary_sensor": {
+      "pump_running": {"name": "Pomp actief"},
+      "warning_water_missing": {"name": "Water ontbreekt"},
+      "warning_filter": {"name": "Filterwaarschuwing"},
+      "warning_breakdown": {"name": "Hardwarestoring"},
+      "dnd_active": {"name": "Niet storen"},
+      "pet_detected": {"name": "Huisdier drinkt"},
+      "on_ac_power": {"name": "Netstroom"},
+      "low_battery": {"name": "Batterij bijna leeg"}
+    },
+    "button": {
+      "reset_filter": {"name": "Filter resetten"},
+      "pump_on": {"name": "Pomp aan"},
+      "pump_off": {"name": "Pomp uit"}
+    },
+    "switch": {
+      "power": {"name": "Aan/Uit"}
+    }
+  }
+}
