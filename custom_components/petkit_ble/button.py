@@ -1,15 +1,17 @@
 """Button platform for Petkit BLE."""
+
 from __future__ import annotations
 
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from homeassistant.components.bluetooth import async_ble_device_from_address
 from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .ble_client import PetkitBleClient, PetkitFountainData
+from .ble_client import PetkitBleClient
 from .const import CMD_RESET_FILTER, CMD_SET_POWER_MODE, CONF_ADDRESS, CONF_MODEL
 from .coordinator import PetkitBleCoordinator
 from .entity import PetkitBleEntity
@@ -64,10 +66,7 @@ async def async_setup_entry(
 ) -> None:
     """Set up Petkit BLE buttons from a config entry."""
     coordinator: PetkitBleCoordinator = config_entry.runtime_data
-    async_add_entities(
-        PetkitBleButton(coordinator, description)
-        for description in BUTTON_DESCRIPTIONS
-    )
+    async_add_entities(PetkitBleButton(coordinator, description) for description in BUTTON_DESCRIPTIONS)
 
 
 class PetkitBleButton(PetkitBleEntity, ButtonEntity):
@@ -86,14 +85,10 @@ class PetkitBleButton(PetkitBleEntity, ButtonEntity):
 
     async def async_press(self) -> None:
         """Send the button command to the device."""
-        from homeassistant.components.bluetooth import async_ble_device_from_address
-
         address: str = self.coordinator.config_entry.data[CONF_ADDRESS]
         alias: str = self.coordinator.config_entry.data[CONF_MODEL]
 
-        ble_device = async_ble_device_from_address(
-            self.coordinator.hass, address, connectable=True
-        )
+        ble_device = async_ble_device_from_address(self.coordinator.hass, address, connectable=True)
         if ble_device is None:
             _LOGGER.warning("Cannot press %s: device %s not found", self.entity_description.key, address)
             return

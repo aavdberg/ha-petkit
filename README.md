@@ -1,5 +1,8 @@
 # Petkit BLE — Home Assistant Integration
 
+[![Lint](https://github.com/aavdberg/ha-petkit/actions/workflows/lint.yml/badge.svg?branch=main)](https://github.com/aavdberg/ha-petkit/actions/workflows/lint.yml)
+[![HACS](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://hacs.xyz)
+
 Local Bluetooth integration for **Petkit water fountains** (W4, W5, CTW3 series).  
 Communicates directly over BLE — no cloud, no API token, no Petkit account required.
 
@@ -45,3 +48,68 @@ The integration polls the fountain every 60 seconds. Commands (pump on/off, filt
 ## Protocol Notes
 
 Communication uses a proprietary BLE protocol over two GATT characteristics (notify + write-without-response). Authentication is required on every connection.
+
+---
+
+## Development
+
+### Branching Strategy
+
+```
+feature/* or fix/*
+        │
+        ▼  Pull Request + lint check
+       dev         ← development & testing
+        │
+        ▼  Pull Request + lint check
+      main         ← production (HACS users)
+                      → automatic GitHub Release
+```
+
+| Branch | Purpose | Protected |
+|---|---|---|
+| `main` | Stable production release | ✅ PR required + lint must pass |
+| `dev` | Integration & testing | ✅ PR required + lint must pass |
+| `feature/*` | New functionality | Free — PR to `dev` |
+| `fix/*` | Bug fixes | Free — PR to `dev` |
+
+### Contributing
+
+1. Branch off `dev`:
+   ```bash
+   git checkout dev
+   git checkout -b feature/my-feature
+   ```
+2. Commit your changes:
+   ```bash
+   git commit -m "feat: description of the change"
+   ```
+3. Push and open a **Pull Request to `dev`**:
+   ```bash
+   git push origin feature/my-feature
+   ```
+4. The lint check (ruff) and Copilot code review run automatically.
+5. When `dev` is stable, a PR to `main` is opened to trigger a release.
+
+### Releases
+
+Every merge to `main` automatically creates a GitHub Release based on the `version` field in `manifest.json`.  
+Bump the version in `manifest.json` on `dev` before opening a release PR.
+
+### Local Development
+
+```bash
+# Install linter
+pip install ruff
+
+# Check for lint errors
+ruff check custom_components/
+
+# Check formatting
+ruff format --check custom_components/
+
+# Auto-fix issues
+ruff check --fix custom_components/
+```
+
+

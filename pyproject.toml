@@ -19,7 +19,6 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-force-sort-within-sections = true
 known-first-party = ["custom_components.petkit_ble"]
 
 [tool.ruff.format]
