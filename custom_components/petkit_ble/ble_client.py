@@ -210,6 +210,7 @@ class PetkitBleClient:
         self._rx_event.clear()
         self._last_response = None
         await self._client.write_gatt_char(BLE_WRITE_UUID, frame, response=False)
+        _LOGGER.debug("TX CMD %d: %s", cmd, frame.hex())
         try:
             await asyncio.wait_for(self._rx_event.wait(), timeout)
         except TimeoutError:
@@ -219,6 +220,7 @@ class PetkitBleClient:
         raw = self._last_response
         if raw is None:
             return None
+        _LOGGER.debug("RX CMD %d: %s", cmd, raw.hex())
         parsed = self._parse_frame(raw)
         if parsed is None:
             _LOGGER.debug("Could not parse response frame for CMD %d: %s", cmd, raw.hex())

@@ -84,3 +84,6 @@ FILTER_LIFE_SMART_DAYS = 30
 
 # Auth sleep between commands (seconds)
 AUTH_STEP_DELAY = 0.3
+
+# Options
+CONF_DEBUG = "debug"
