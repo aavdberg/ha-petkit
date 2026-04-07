@@ -7,7 +7,7 @@ import logging
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
-from homeassistant.components.bluetooth import async_ble_device_from_address
+from homeassistant.components.bluetooth import async_ble_device_from_address, async_last_service_info
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 if TYPE_CHECKING:
@@ -55,7 +55,15 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
             except Exception as exc:
                 raise UpdateFailed(f"Error communicating with {self._name}: {exc}") from exc
 
-        _LOGGER.debug("Polled %s: power=%s mode=%s", self._name, data.power_status, data.mode)
+        _LOGGER.debug(
+            "Polled %s: power=%s mode=%s firmware=%s", self._name, data.power_status, data.mode, data.firmware
+        )
+
+        # RSSI from the most recent BLE advertisement (no connection required)
+        service_info = async_last_service_info(self.hass, self._address, connectable=False)
+        if service_info is not None:
+            data.rssi = service_info.rssi
+
         return data
 
     async def async_send_command(self, cmd: int, data: list[int]) -> bool:
