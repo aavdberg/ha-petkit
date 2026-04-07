@@ -37,6 +37,44 @@ Communicates directly over BLE — no cloud, no API token, no Petkit account req
 2. Add `https://github.com/aavdberg/ha-petkit` with category **Integration**
 3. Install **Petkit BLE** and restart Home Assistant
 
+## Testing the Dev Branch
+
+> **Note:** HACS 2.x no longer supports branch selection in the UI. Use one of the methods below to test the `dev` branch.
+
+### Option A — Manual copy (quickest)
+
+1. In Home Assistant, open **File Editor** or connect via **SSH / Samba**
+2. Copy the folder `custom_components/petkit_ble` from the `dev` branch to:
+   ```
+   /config/custom_components/petkit_ble/
+   ```
+3. Restart Home Assistant
+
+To download the dev branch as a zip:
+```
+https://github.com/aavdberg/ha-petkit/archive/refs/heads/dev.zip
+```
+Extract and copy the `custom_components/petkit_ble` folder.
+
+### Option B — HACS beta release (recommended for ongoing testing)
+
+Every push to `dev` automatically creates a **pre-release** tag (e.g. `v1.0.0-dev.202604071200`).
+
+1. In HACS, open the **Petkit BLE** repository
+2. Select the **⋮ menu → Show details**
+3. Enable **"Show beta releases"** in your HACS settings (⋮ → Settings → Experimental)
+4. The latest dev pre-release will appear as an available update in HACS
+
+### Option C — Git clone via SSH
+
+```bash
+cd /config/custom_components
+git clone -b dev https://github.com/aavdberg/ha-petkit.git petkit_ble_dev
+# Then symlink or copy the inner folder:
+cp -r petkit_ble_dev/custom_components/petkit_ble ./petkit_ble
+```
+
+
 ## Configuration
 
 After installation, go to **Settings → Devices & Services → Add Integration → Petkit BLE**.

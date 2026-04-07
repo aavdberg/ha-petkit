@@ -14,10 +14,10 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.const import (
     PERCENTAGE,
+    SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
     EntityCategory,
     UnitOfElectricPotential,
     UnitOfEnergy,
-    UnitOfSignalStrength,
     UnitOfTime,
     UnitOfVolume,
 )
@@ -29,6 +29,18 @@ from .coordinator import PetkitBleCoordinator
 from .entity import PetkitBleEntity
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _format_seconds(total_seconds: int) -> str:
+    """Format a duration in seconds as a human-readable string (e.g. '5d 14h 23m 12s')."""
+    days, remainder = divmod(int(total_seconds), 86400)
+    hours, remainder = divmod(remainder, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    if days > 0:
+        return f"{days}d {hours}h {minutes}m {seconds}s"
+    if hours > 0:
+        return f"{hours}h {minutes}m {seconds}s"
+    return f"{minutes}m {seconds}s"
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -51,18 +63,14 @@ SENSOR_DESCRIPTIONS: tuple[PetkitSensorEntityDescription, ...] = (
     PetkitSensorEntityDescription(
         key="pump_runtime_today",
         translation_key="pump_runtime_today",
-        native_unit_of_measurement=UnitOfTime.MINUTES,
-        device_class=SensorDeviceClass.DURATION,
-        state_class=SensorStateClass.TOTAL_INCREASING,
-        value_fn=lambda d: round(d.pump_runtime_today / 60, 1),
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda d: _format_seconds(d.pump_runtime_today),
     ),
     PetkitSensorEntityDescription(
         key="pump_runtime",
         translation_key="pump_runtime",
-        native_unit_of_measurement=UnitOfTime.SECONDS,
-        device_class=SensorDeviceClass.DURATION,
-        state_class=SensorStateClass.TOTAL_INCREASING,
-        value_fn=lambda d: d.pump_runtime,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda d: _format_seconds(d.pump_runtime),
     ),
     PetkitSensorEntityDescription(
         key="battery_percent",
@@ -115,7 +123,7 @@ SENSOR_DESCRIPTIONS: tuple[PetkitSensorEntityDescription, ...] = (
     PetkitSensorEntityDescription(
         key="rssi",
         translation_key="rssi",
-        native_unit_of_measurement=UnitOfSignalStrength.DECIBELS_MILLIWATT,
+        native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
         device_class=SensorDeviceClass.SIGNAL_STRENGTH,
         entity_category=EntityCategory.DIAGNOSTIC,
         state_class=SensorStateClass.MEASUREMENT,

@@ -44,7 +44,9 @@ custom_components/petkit_ble/
 ├── workflows/
 │   ├── lint.yml         # Ruff lint + format check + HACS validation (on push/PR to main & dev)
 │   ├── copilot-review.yml  # Copilot auto code review on PRs to main & dev
+│   ├── pre-release.yml  # Auto pre-release tag on every push to dev (for HACS beta testing)
 │   └── release.yml      # Auto GitHub Release on merge to main (based on manifest version)
+└── copilot-instructions.md  # THIS FILE — update when protocol/devices/architecture changes
 ```
 
 ---
@@ -157,8 +159,24 @@ CTW2   → CTW2
 | `dev` | Development & testing — all features merge here first |
 | `feature/*` | Individual features — PR to `dev` |
 | `fix/*` | Bug fixes — PR to `dev` |
+| `chore/*` | Non-code changes (docs, CI, deps) — PR to `dev` |
 
 Both `main` and `dev` are protected: PRs required, ruff lint must pass.
+
+### ⚠️ CRITICAL RULE — Always follow this workflow:
+```
+git checkout dev && git pull
+git checkout -b fix/my-fix          # or feature/, chore/
+# make changes
+git add ... && git commit -m "fix: ..."
+git push -u origin fix/my-fix
+gh pr create --base dev --head fix/my-fix --title "..." --body "..."
+# wait for CI to pass, then merge
+```
+
+**NEVER commit or push directly to `dev` or `main`.**  
+Even as admin (bypassed protection), direct pushes skip CI and break the audit trail.
+Every change — no matter how small — must go through a PR to `dev`.
 
 ---
 

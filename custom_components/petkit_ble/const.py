@@ -18,6 +18,7 @@ FRAME_TYPE_RECV = 2
 
 # Command IDs
 CMD_GET_DEVICE_INFO = 213
+CMD_GET_FIRMWARE = 200
 CMD_AUTH_INIT = 73
 CMD_AUTH_VERIFY = 86
 CMD_SET_TIME = 84
@@ -84,3 +85,6 @@ FILTER_LIFE_SMART_DAYS = 30
 
 # Auth sleep between commands (seconds)
 AUTH_STEP_DELAY = 0.3
+
+# Options
+CONF_DEBUG = "debug"

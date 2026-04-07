@@ -20,11 +20,18 @@ class PetkitBleEntity(CoordinatorEntity[PetkitBleCoordinator]):
         address: str = coordinator.config_entry.data[CONF_ADDRESS]
         mac_normalized = address.replace(":", "").lower()
         self._attr_unique_id = f"{mac_normalized}_{key}"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, address)},
-            name=coordinator.config_entry.data[CONF_NAME],
+        self._address = address
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device info, including firmware version when available."""
+        firmware = self.coordinator.data.firmware if self.coordinator.data else None
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._address)},
+            name=self.coordinator.config_entry.data[CONF_NAME],
             manufacturer="Petkit",
-            model=coordinator.config_entry.data[CONF_MODEL],
+            model=self.coordinator.config_entry.data[CONF_MODEL],
+            sw_version=firmware or None,
         )
 
     @property

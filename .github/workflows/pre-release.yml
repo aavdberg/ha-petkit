@@ -1,0 +1,39 @@
+name: Pre-release
+
+on:
+  push:
+    branches: ["dev"]
+
+jobs:
+  pre-release:
+    name: Create Dev Pre-release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version from manifest
+        id: version
+        run: |
+          VERSION=$(python3 -c "import json; print(json.load(open('custom_components/petkit_ble/manifest.json'))['version'])")
+          DATE=$(date +'%Y%m%d%H%M')
+          TAG="v${VERSION}-dev.${DATE}"
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Create pre-release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: "Dev ${{ steps.version.outputs.tag }}"
+          target_commitish: ${{ github.sha }}
+          prerelease: true
+          generate_release_notes: true
+          body: |
+            ⚠️ **This is a development pre-release — not for production use.**
+
+            Install via HACS with "Show beta releases" enabled, or manually copy
+            `custom_components/petkit_ble` to your HA `config/custom_components/` folder.
+
+            See [README](https://github.com/aavdberg/ha-petkit#testing-the-dev-branch) for full instructions.

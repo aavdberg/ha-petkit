@@ -10,8 +10,9 @@ from homeassistant.components.bluetooth import (
     BluetoothServiceInfoBleak,
     async_discovered_service_info,
 )
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
+from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult, OptionsFlow
 from homeassistant.const import CONF_ADDRESS
+from homeassistant.core import callback
 
 from .const import (
     ALIAS_CTW2,
@@ -21,6 +22,7 @@ from .const import (
     ALIAS_W5,
     ALIAS_W5C,
     ALIAS_W5N,
+    CONF_DEBUG,
     CONF_MODEL,
     CONF_NAME,
     DOMAIN,
@@ -63,6 +65,12 @@ class PetkitBleConfigFlow(ConfigFlow, domain=DOMAIN):
         """Initialise the config flow."""
         self._discovered_devices: dict[str, str] = {}  # address -> name
         self._bluetooth_info: BluetoothServiceInfoBleak | None = None
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
+        """Return the options flow handler."""
+        return PetkitBleOptionsFlow()
 
     # ------------------------------------------------------------------
     # Auto-discovery (HA calls this when manifest bluetooth matcher fires)
@@ -151,4 +159,21 @@ class PetkitBleConfigFlow(ConfigFlow, domain=DOMAIN):
                 }
             ),
             errors={"base": "no_devices_found"},
+        )
+
+
+class PetkitBleOptionsFlow(OptionsFlow):
+    """Handle options for Petkit BLE (e.g. enable debug logging)."""
+
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Show and handle the options form."""
+        if user_input is not None:
+            return self.async_create_entry(title="", data=user_input)
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=self.add_suggested_values_to_schema(
+                vol.Schema({vol.Optional(CONF_DEBUG): bool}),
+                self.config_entry.options or {CONF_DEBUG: False},
+            ),
         )

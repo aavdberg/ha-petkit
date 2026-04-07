@@ -12,6 +12,7 @@ from dataclasses import dataclass
 
 from bleak import BleakClient
 from bleak.backends.device import BLEDevice
+from bleak_retry_connector import establish_connection
 
 from .const import (
     AUTH_STEP_DELAY,
@@ -22,6 +23,7 @@ from .const import (
     CMD_GET_BATTERY,
     CMD_GET_CONFIG,
     CMD_GET_DEVICE_INFO,
+    CMD_GET_FIRMWARE,
     CMD_GET_STATE,
     CMD_SET_TIME,
     CTW3_ALIASES,
@@ -180,9 +182,15 @@ class PetkitBleClient:
     def _on_notify(self, _sender: int, data: bytearray) -> None:
         """Handle incoming BLE notification data."""
         self._rx_buf.extend(data)
-        if FRAME_END in self._rx_buf:
-            self._last_response = bytes(self._rx_buf)
-            self._rx_buf.clear()
+        # Need at least header(3) + cmd/type/seq/len/reserved(5) = 8 bytes to read length
+        if len(self._rx_buf) < 8:
+            return
+        data_len = self._rx_buf[6]
+        # Total frame = header(3) + meta(5) + payload(data_len) + end(1)
+        expected_len = 8 + data_len + 1
+        if len(self._rx_buf) >= expected_len and self._rx_buf[expected_len - 1] == FRAME_END:
+            self._last_response = bytes(self._rx_buf[:expected_len])
+            del self._rx_buf[:expected_len]
             self._rx_event.set()
 
     # ------------------------------------------------------------------
@@ -203,6 +211,7 @@ class PetkitBleClient:
         self._rx_event.clear()
         self._last_response = None
         await self._client.write_gatt_char(BLE_WRITE_UUID, frame, response=False)
+        _LOGGER.debug("TX CMD %d: %s", cmd, frame.hex())
         try:
             await asyncio.wait_for(self._rx_event.wait(), timeout)
         except TimeoutError:
@@ -212,6 +221,7 @@ class PetkitBleClient:
         raw = self._last_response
         if raw is None:
             return None
+        _LOGGER.debug("RX CMD %d: %s", cmd, raw.hex())
         parsed = self._parse_frame(raw)
         if parsed is None:
             _LOGGER.debug("Could not parse response frame for CMD %d: %s", cmd, raw.hex())
@@ -224,12 +234,17 @@ class PetkitBleClient:
     # ------------------------------------------------------------------
 
     async def _connect(self) -> None:
-        """Establish BLE connection and start notifications."""
-        self._client = BleakClient(self._device)
-        await self._client.connect()
+        """Establish BLE connection using bleak-retry-connector for reliability."""
+        self._client = await establish_connection(
+            BleakClient,
+            self._device,
+            self._device.address,
+        )
         await self._client.start_notify(BLE_NOTIFY_UUID, self._on_notify)
         self._rx_buf.clear()
         self._seq = 0
+        # Allow device time to settle before sending first command
+        await asyncio.sleep(0.5)
 
     async def disconnect(self) -> None:
         """Disconnect from the device, suppressing cleanup errors."""
@@ -249,7 +264,12 @@ class PetkitBleClient:
         """Run the full 5-step Petkit authentication sequence."""
         # Step 1: CMD 213 — get device id & serial
         payload_213 = await self._send_and_wait(CMD_GET_DEVICE_INFO, FRAME_TYPE_SEND, [0, 0])
-        if payload_213 is None or len(payload_213) < 23:
+        if payload_213 is None or len(payload_213) < 8:
+            _LOGGER.error(
+                "CMD 213 failed or response too short (got %d bytes): %s",
+                len(payload_213) if payload_213 is not None else 0,
+                payload_213.hex() if payload_213 is not None else "None",
+            )
             raise RuntimeError("CMD 213 failed or response too short")
 
         device_id_bytes = list(payload_213[2:8])
@@ -392,6 +412,12 @@ class PetkitBleClient:
         try:
             await self._connect()
             await self._authenticate(alias)
+
+            # CMD 200 — firmware version: byte[0]=hardware, byte[1]=firmware
+            payload_200 = await self._send_and_wait(CMD_GET_FIRMWARE, FRAME_TYPE_SEND, [])
+            if payload_200 is not None and len(payload_200) >= 2:
+                data.firmware = f"{payload_200[0]}.{payload_200[1]}"
+                _LOGGER.debug("CMD 200 firmware payload: %s → %s", payload_200.hex(), data.firmware)
 
             # CMD 210 — device state
             payload_210 = await self._send_and_wait(CMD_GET_STATE, FRAME_TYPE_SEND, [0, 0])
