@@ -1,5 +1,8 @@
 # Petkit BLE — Home Assistant Integration
 
+[![Lint](https://github.com/aavdberg/ha-petkit/actions/workflows/lint.yml/badge.svg?branch=main)](https://github.com/aavdberg/ha-petkit/actions/workflows/lint.yml)
+[![HACS](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://hacs.xyz)
+
 Local Bluetooth integration for **Petkit water fountains** (W4, W5, CTW3 series).  
 Communicates directly over BLE — no cloud, no API token, no Petkit account required.
 
@@ -45,3 +48,67 @@ The integration polls the fountain every 60 seconds. Commands (pump on/off, filt
 ## Protocol Notes
 
 Communication uses a proprietary BLE protocol over two GATT characteristics (notify + write-without-response). Authentication is required on every connection.
+
+---
+
+## Development
+
+### Branching strategie
+
+```
+feature/* of fix/*
+        │
+        ▼  Pull Request + lint check
+       dev         ← ontwikkeling & testen
+        │
+        ▼  Pull Request + lint check
+      main         ← productie (HACS-gebruikers)
+                      → automatisch GitHub Release
+```
+
+| Branch | Doel | Beschermd |
+|---|---|---|
+| `main` | Stabiele productie-release | ✅ PR verplicht + lint groen |
+| `dev` | Integratie & testen | ✅ PR verplicht + lint groen |
+| `feature/*` | Nieuwe functionaliteit | Vrij — PR naar `dev` |
+| `fix/*` | Bugfixes | Vrij — PR naar `dev` |
+
+### Bijdragen
+
+1. Fork de repo of maak een branch op basis van `dev`:
+   ```bash
+   git checkout dev
+   git checkout -b feature/mijn-functie
+   ```
+2. Maak je wijzigingen en commit:
+   ```bash
+   git commit -m "feat: beschrijving van de wijziging"
+   ```
+3. Push je branch en open een **Pull Request naar `dev`**:
+   ```bash
+   git push origin feature/mijn-functie
+   ```
+4. De lint-check (ruff) en Copilot code review lopen automatisch.
+5. Wanneer `dev` stabiel is, wordt een PR naar `main` geopend voor de release.
+
+### Releases
+
+Bij elke merge naar `main` maakt de release-workflow automatisch een GitHub Release aan op basis van de `version` in `manifest.json`.  
+Verhoog de versie in `manifest.json` op de `dev` branch vóór je een release PR maakt.
+
+### Lokale ontwikkeling
+
+```bash
+# Afhankelijkheden installeren
+pip install ruff
+
+# Lint controleren
+ruff check custom_components/
+
+# Opmaak controleren
+ruff format --check custom_components/
+
+# Automatisch fixen
+ruff check --fix custom_components/
+```
+
