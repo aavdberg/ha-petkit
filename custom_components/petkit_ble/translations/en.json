@@ -61,9 +61,7 @@
       "low_battery": {"name": "Low Battery"}
     },
     "button": {
-      "reset_filter": {"name": "Reset Filter"},
-      "pump_on": {"name": "Pump On"},
-      "pump_off": {"name": "Pump Off"}
+      "reset_filter": {"name": "Reset Filter"}
     },
     "switch": {
       "power": {"name": "Power"}

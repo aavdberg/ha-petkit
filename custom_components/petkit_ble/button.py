@@ -10,7 +10,7 @@ from homeassistant.components.button import ButtonEntity, ButtonEntityDescriptio
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import CMD_RESET_FILTER, CMD_SET_POWER_MODE
+from .const import CMD_RESET_FILTER
 from .coordinator import PetkitBleCoordinator
 from .entity import PetkitBleEntity
 
@@ -28,33 +28,11 @@ def _reset_filter_cmds(_coordinator: PetkitBleCoordinator) -> list[tuple[int, li
     return [(CMD_RESET_FILTER, [0])]
 
 
-def _pump_on_cmds(coordinator: PetkitBleCoordinator) -> list[tuple[int, list[int]]]:
-    raw_mode = coordinator.data.mode if coordinator.data else 1
-    mode = raw_mode if raw_mode in (1, 2) else 1
-    return [(CMD_SET_POWER_MODE, [1, mode])]
-
-
-def _pump_off_cmds(coordinator: PetkitBleCoordinator) -> list[tuple[int, list[int]]]:
-    raw_mode = coordinator.data.mode if coordinator.data else 1
-    mode = raw_mode if raw_mode in (1, 2) else 1
-    return [(CMD_SET_POWER_MODE, [0, mode])]
-
-
 BUTTON_DESCRIPTIONS: tuple[PetkitButtonDescription, ...] = (
     PetkitButtonDescription(
         key="reset_filter",
         translation_key="reset_filter",
         press_fn=_reset_filter_cmds,
-    ),
-    PetkitButtonDescription(
-        key="pump_on",
-        translation_key="pump_on",
-        press_fn=_pump_on_cmds,
-    ),
-    PetkitButtonDescription(
-        key="pump_off",
-        translation_key="pump_off",
-        press_fn=_pump_off_cmds,
     ),
 )
 

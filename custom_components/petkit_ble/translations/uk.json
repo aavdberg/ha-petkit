@@ -61,9 +61,7 @@
       "low_battery": {"name": "Низький заряд батареї"}
     },
     "button": {
-      "reset_filter": {"name": "Скинути фільтр"},
-      "pump_on": {"name": "Насос увімкнути"},
-      "pump_off": {"name": "Насос вимкнути"}
+      "reset_filter": {"name": "Скинути фільтр"}
     },
     "switch": {
       "power": {"name": "Живлення"}
