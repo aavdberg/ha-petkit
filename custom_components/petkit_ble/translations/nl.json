@@ -61,9 +61,7 @@
       "low_battery": {"name": "Batterij bijna leeg"}
     },
     "button": {
-      "reset_filter": {"name": "Filter resetten"},
-      "pump_on": {"name": "Pomp aan"},
-      "pump_off": {"name": "Pomp uit"}
+      "reset_filter": {"name": "Filter resetten"}
     },
     "switch": {
       "power": {"name": "Aan/Uit"}
