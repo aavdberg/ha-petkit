@@ -7,6 +7,8 @@ DOMAIN = "petkit_ble"
 # BLE UUIDs
 BLE_WRITE_UUID = "0000aaa2-0000-1000-8000-00805f9b34fb"
 BLE_NOTIFY_UUID = "0000aaa1-0000-1000-8000-00805f9b34fb"
+# Standard GATT Device Information Service — Serial Number String (0x2A25)
+GATT_SERIAL_NUMBER_UUID = "00002a25-0000-1000-8000-00805f9b34fb"
 
 # Frame markers
 FRAME_HEADER = bytes([0xFA, 0xFC, 0xFD])

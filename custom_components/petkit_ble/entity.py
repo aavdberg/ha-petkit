@@ -25,13 +25,18 @@ class PetkitBleEntity(CoordinatorEntity[PetkitBleCoordinator]):
     @property
     def device_info(self) -> DeviceInfo:
         """Return device info, including firmware version when available."""
-        firmware = self.coordinator.data.firmware if self.coordinator.data else None
+        d = self.coordinator.data
+        firmware = d.firmware if d else None
+        hardware = d.hardware_version if d else None
+        serial = d.serial_number if d else None
         return DeviceInfo(
             identifiers={(DOMAIN, self._address)},
             name=self.coordinator.config_entry.data[CONF_NAME],
             manufacturer="Petkit",
             model=self.coordinator.config_entry.data[CONF_MODEL],
             sw_version=firmware or None,
+            hw_version=hardware or None,
+            serial_number=serial or None,
         )
 
     @property
