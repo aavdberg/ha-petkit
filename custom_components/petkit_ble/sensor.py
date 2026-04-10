@@ -31,7 +31,6 @@ from .entity import PetkitBleEntity
 _LOGGER = logging.getLogger(__name__)
 
 
-
 @dataclass(frozen=True, kw_only=True)
 class PetkitSensorEntityDescription(SensorEntityDescription):
     """Sensor description with value extractor and optional availability check."""
