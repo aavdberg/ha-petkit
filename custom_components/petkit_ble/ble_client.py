@@ -274,10 +274,8 @@ class PetkitBleClient:
             # First-time initialisation: fetch device ID and generate a random secret
             payload_213 = await self._send_and_wait(CMD_GET_DEVICE_INFO, FRAME_TYPE_SEND, [])
             if payload_213 is None or len(payload_213) < 8:
-                raise RuntimeError(
-                    "CMD 213 failed or response too short (got %d bytes)"
-                    % (len(payload_213) if payload_213 is not None else 0)
-                )
+                byte_count = len(payload_213) if payload_213 is not None else 0
+                raise RuntimeError(f"CMD 213 failed or response too short (got {byte_count} bytes)")
             # Convert device_id bytes to big-endian for CMD 73 payload
             device_id_be = struct.pack(">q", int.from_bytes(payload_213[:8], "little"))
             new_secret = secrets.token_bytes(8)
@@ -295,9 +293,8 @@ class PetkitBleClient:
         payload_86 = await self._send_and_wait(CMD_AUTH_VERIFY, FRAME_TYPE_SEND, list(auth_secret))
         await asyncio.sleep(AUTH_STEP_DELAY)
         if payload_86 is None or len(payload_86) == 0 or payload_86[0] != 1:
-            raise RuntimeError(
-                "Authentication failed (CMD 86 response: %s)" % (payload_86.hex() if payload_86 else "None")
-            )
+            resp_hex = payload_86.hex() if payload_86 else "None"
+            raise RuntimeError(f"Authentication failed (CMD 86 response: {resp_hex})")
 
         self.used_secret = auth_secret
 
