@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
 
 from .ble_client import PetkitBleClient, PetkitFountainData
-from .const import CONF_ADDRESS, CONF_DEVICE_SECRET, CONF_MODEL, CONF_NAME, DOMAIN, POLL_INTERVAL
+from .const import CONF_ADDRESS, CONF_MODEL, CONF_NAME, DOMAIN, POLL_INTERVAL
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -30,9 +30,6 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
         self._name: str = config_entry.data[CONF_NAME]
         self._config_entry = config_entry
         self._ble_lock = asyncio.Lock()
-
-        secret_hex = config_entry.data.get(CONF_DEVICE_SECRET)
-        self._secret: bytes | None = bytes.fromhex(secret_hex) if secret_hex else None
 
         super().__init__(
             hass,
@@ -55,20 +52,9 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
             if client is None:
                 raise UpdateFailed(f"Petkit fountain {self._name} ({self._address}) not reachable via Bluetooth")
             try:
-                data = await client.async_poll(self._alias, self._secret)
+                data = await client.async_poll(self._alias)
             except Exception as exc:
-                # Clear the stored secret so the next poll attempts a full re-initialisation
-                # (CMD 213 + CMD 73 + CMD 86).  This recovers the common case where another
-                # BLE client (e.g. the official iOS app) has changed the device's auth state.
-                self._secret = None
                 raise UpdateFailed(f"Error communicating with {self._name}: {exc}") from exc
-
-            # Persist the secret after first-time or re-initialisation
-            if client.used_secret is not None and client.used_secret != self._secret:
-                self._secret = client.used_secret
-                new_data = {**self._config_entry.data, CONF_DEVICE_SECRET: self._secret.hex()}
-                self.hass.config_entries.async_update_entry(self._config_entry, data=new_data)
-                _LOGGER.info("Device secret saved for %s (%s)", self._name, self._address)
 
         _LOGGER.debug(
             "Polled %s: power=%s mode=%s firmware=%s", self._name, data.power_status, data.mode, data.firmware
@@ -97,4 +83,4 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
                     self._address,
                 )
                 return False
-            return await client.async_send_command(cmd, data, self._alias, self._secret)
+            return await client.async_send_command(cmd, data, self._alias)

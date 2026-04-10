@@ -143,7 +143,6 @@ class PetkitBleClient:
         self._rx_buf: bytearray = bytearray()
         self._rx_queue: asyncio.Queue[bytes] = asyncio.Queue()
         self._seq: int = 0
-        self.used_secret: bytes | None = None
 
     # ------------------------------------------------------------------
     # Frame encode / decode
@@ -278,42 +277,37 @@ class PetkitBleClient:
     # Authentication sequence
     # ------------------------------------------------------------------
 
-    async def _authenticate(self, alias: str, secret: bytes | None = None) -> None:
-        """Run the Petkit authentication sequence.
+    async def _authenticate(self, alias: str) -> None:
+        """Run the full Petkit authentication sequence every connection.
 
-        On first connection (secret=None), fetches the device ID, generates a random
-        8-byte secret, initialises the device with CMD 73, then verifies with CMD 86.
-        The generated secret is stored in self.used_secret for the coordinator to persist.
-
-        On subsequent connections, verifies directly with CMD 86 using the stored secret.
+        Always performs CMD 213 → CMD 73 → CMD 86 → CMD 84 to guarantee a valid
+        session, regardless of whether another BLE client (e.g. the iOS app) has
+        connected in the meantime.  This prevents the "false-positive CMD 86" issue
+        where the device accepts a stale secret in CMD 86 but ignores subsequent
+        state commands because no CMD 73 was sent in the current session.
         """
-        if secret is None:
-            # First-time initialisation: fetch device ID and generate a random secret
-            payload_213 = await self._send_and_wait(CMD_GET_DEVICE_INFO, FRAME_TYPE_SEND, [])
-            if payload_213 is None or len(payload_213) < 8:
-                byte_count = len(payload_213) if payload_213 is not None else 0
-                raise RuntimeError(f"CMD 213 failed or response too short (got {byte_count} bytes)")
-            # Convert device_id bytes to big-endian for CMD 73 payload
-            device_id_be = struct.pack(">q", int.from_bytes(payload_213[:8], "little"))
-            new_secret = secrets.token_bytes(8)
+        # CMD 213 — get device ID
+        payload_213 = await self._send_and_wait(CMD_GET_DEVICE_INFO, FRAME_TYPE_SEND, [])
+        if payload_213 is None or len(payload_213) < 8:
+            byte_count = len(payload_213) if payload_213 is not None else 0
+            raise RuntimeError(f"CMD 213 failed or response too short (got {byte_count} bytes)")
+        device_id_be = struct.pack(">q", int.from_bytes(payload_213[:8], "little"))
+        new_secret = secrets.token_bytes(8)
 
-            await asyncio.sleep(AUTH_STEP_DELAY)
-            await self._send_and_wait(CMD_AUTH_INIT, FRAME_TYPE_SEND, list(device_id_be) + list(new_secret))
-            await asyncio.sleep(AUTH_STEP_DELAY)
+        await asyncio.sleep(AUTH_STEP_DELAY)
 
-            auth_secret = new_secret
-            _LOGGER.debug("First-time device initialisation complete for %s", alias)
-        else:
-            auth_secret = secret
+        # CMD 73 — register the new random secret with the device
+        await self._send_and_wait(CMD_AUTH_INIT, FRAME_TYPE_SEND, list(device_id_be) + list(new_secret))
+        await asyncio.sleep(AUTH_STEP_DELAY)
 
         # CMD 86 — verify secret; response[0]==1 means success
-        payload_86 = await self._send_and_wait(CMD_AUTH_VERIFY, FRAME_TYPE_SEND, list(auth_secret))
+        payload_86 = await self._send_and_wait(CMD_AUTH_VERIFY, FRAME_TYPE_SEND, list(new_secret))
         await asyncio.sleep(AUTH_STEP_DELAY)
         if payload_86 is None or len(payload_86) == 0 or payload_86[0] != 1:
             resp_hex = payload_86.hex() if payload_86 else "None"
             raise RuntimeError(f"Authentication failed (CMD 86 response: {resp_hex})")
 
-        self.used_secret = auth_secret
+        _LOGGER.debug("Authentication complete for %s", alias)
 
         # CMD 84 — set device time
         sec = int(time.time()) - PETKIT_EPOCH_OFFSET
@@ -411,16 +405,15 @@ class PetkitBleClient:
     # Public API
     # ------------------------------------------------------------------
 
-    async def async_poll(self, alias: str, secret: bytes | None = None) -> PetkitFountainData:
+    async def async_poll(self, alias: str) -> PetkitFountainData:
         """Connect, authenticate, poll all state commands, disconnect.
 
         Returns a fully-populated PetkitFountainData instance.
-        The generated or used secret is stored in self.used_secret after success.
         """
         data = PetkitFountainData(alias=alias)
         try:
             await self._connect()
-            await self._authenticate(alias, secret)
+            await self._authenticate(alias)
 
             # CMD 200 — firmware version: byte[0]=hardware revision, byte[1]=firmware version
             payload_200 = await self._send_and_wait(CMD_GET_FIRMWARE, FRAME_TYPE_SEND, [])
@@ -472,7 +465,6 @@ class PetkitBleClient:
         cmd: int,
         data: list[int],
         alias: str,
-        secret: bytes | None = None,
     ) -> bool:
         """Connect, authenticate, send a single command, disconnect.
 
@@ -480,7 +472,7 @@ class PetkitBleClient:
         """
         try:
             await self._connect()
-            await self._authenticate(alias, secret)
+            await self._authenticate(alias)
             await self._send_and_wait(cmd, FRAME_TYPE_SEND, data)
         except Exception:
             _LOGGER.exception("Error sending CMD %d", cmd)
