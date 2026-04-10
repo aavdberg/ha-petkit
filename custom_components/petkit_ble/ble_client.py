@@ -38,6 +38,7 @@ from .const import (
     FRAME_END,
     FRAME_HEADER,
     FRAME_TYPE_SEND,
+    GATT_SERIAL_NUMBER_UUID,
     PETKIT_EPOCH_OFFSET,
     POWER_COEFF_W,
 )
@@ -92,6 +93,9 @@ class PetkitFountainData:
 
     # CMD 66 battery (raw ADC voltage, little-endian, for non-CTW3)
     battery_voltage_mv_66: int = 0
+
+    # GATT Device Information Service
+    serial_number: str = ""
 
     @property
     def is_ctw3(self) -> bool:
@@ -416,6 +420,14 @@ class PetkitBleClient:
         data = PetkitFountainData(alias=alias)
         try:
             await self._connect()
+
+            # GATT Device Information Service — serial number (standard BLE, no auth needed)
+            assert self._client is not None
+            with contextlib.suppress(Exception):
+                sn_bytes = await self._client.read_gatt_char(GATT_SERIAL_NUMBER_UUID)
+                data.serial_number = sn_bytes.decode("utf-8", errors="ignore").strip()
+                _LOGGER.debug("Serial number: %s", data.serial_number)
+
             await self._authenticate(alias, secret)
 
             # CMD 200 — firmware version: byte[0]=hardware revision, byte[1]=firmware version
