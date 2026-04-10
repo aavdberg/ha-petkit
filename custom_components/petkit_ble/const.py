@@ -32,6 +32,7 @@ CMD_RESET_FILTER = 222
 CONF_ADDRESS = "address"
 CONF_NAME = "name"
 CONF_MODEL = "model"
+CONF_DEVICE_SECRET = "device_secret"
 
 # Device aliases derived from BLE name
 ALIAS_CTW3 = "CTW3"
@@ -51,9 +52,6 @@ PETKIT_NAME_PREFIXES = (
 
 # Aliases that use the CTW3 26-byte state format
 CTW3_ALIASES = {ALIAS_CTW3}
-
-# Models that use all-zero device_id for auth secret computation
-ZERO_DEVICE_ID_MODELS = {ALIAS_CTW3}
 
 # Poll interval in seconds
 POLL_INTERVAL = 60
