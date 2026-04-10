@@ -136,8 +136,7 @@ class PetkitBleClient:
         self._device = ble_device
         self._client: BleakClient | None = None
         self._rx_buf: bytearray = bytearray()
-        self._rx_event: asyncio.Event = asyncio.Event()
-        self._last_response: bytes | None = None
+        self._rx_queue: asyncio.Queue[bytes] = asyncio.Queue()
         self._seq: int = 0
         self.used_secret: bytes | None = None
 
@@ -189,9 +188,8 @@ class PetkitBleClient:
         # Total frame = header(3) + meta(5) + payload(data_len) + end(1)
         expected_len = 8 + data_len + 1
         if len(self._rx_buf) >= expected_len and self._rx_buf[expected_len - 1] == FRAME_END:
-            self._last_response = bytes(self._rx_buf[:expected_len])
+            self._rx_queue.put_nowait(bytes(self._rx_buf[:expected_len]))
             del self._rx_buf[:expected_len]
-            self._rx_event.set()
 
     # ------------------------------------------------------------------
     # Low-level send/receive
@@ -204,30 +202,42 @@ class PetkitBleClient:
         data: list[int],
         timeout: float = 5.0,
     ) -> bytes | None:
-        """Send a command frame and wait for the matching response."""
+        """Send a command frame and wait for the matching response.
+
+        Unsolicited notifications with a different cmd byte (e.g. CTW3 CMD 230
+        extended state pushes) are discarded while waiting for the expected reply.
+        """
         assert self._client is not None
         seq = self._next_seq()
         frame = self._build_frame(cmd, type_, seq, data)
-        self._rx_event.clear()
-        self._last_response = None
         await self._client.write_gatt_char(BLE_WRITE_UUID, frame, response=False)
         _LOGGER.debug("TX CMD %d: %s", cmd, frame.hex())
-        try:
-            await asyncio.wait_for(self._rx_event.wait(), timeout)
-        except TimeoutError:
-            _LOGGER.warning("Timeout waiting for response to CMD %d", cmd)
-            return None
-
-        raw = self._last_response
-        if raw is None:
-            return None
-        _LOGGER.debug("RX CMD %d: %s", cmd, raw.hex())
-        parsed = self._parse_frame(raw)
-        if parsed is None:
-            _LOGGER.debug("Could not parse response frame for CMD %d: %s", cmd, raw.hex())
-            return None
-        _resp_cmd, _resp_type, _resp_seq, payload = parsed
-        return payload
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + timeout
+        while True:
+            remaining = deadline - loop.time()
+            if remaining <= 0:
+                _LOGGER.warning("Timeout waiting for response to CMD %d", cmd)
+                return None
+            try:
+                raw = await asyncio.wait_for(self._rx_queue.get(), remaining)
+            except TimeoutError:
+                _LOGGER.warning("Timeout waiting for response to CMD %d", cmd)
+                return None
+            parsed = self._parse_frame(raw)
+            if parsed is None:
+                _LOGGER.debug("Could not parse frame while waiting for CMD %d: %s", cmd, raw.hex())
+                continue
+            resp_cmd, _resp_type, _resp_seq, payload = parsed
+            if resp_cmd != cmd:
+                _LOGGER.debug(
+                    "Discarding unsolicited CMD %d notification while waiting for CMD %d",
+                    resp_cmd,
+                    cmd,
+                )
+                continue
+            _LOGGER.debug("RX CMD %d: %s", cmd, raw.hex())
+            return payload
 
     # ------------------------------------------------------------------
     # Connection helpers
@@ -242,6 +252,9 @@ class PetkitBleClient:
         )
         await self._client.start_notify(BLE_NOTIFY_UUID, self._on_notify)
         self._rx_buf.clear()
+        # Discard any stale notifications from a previous connection
+        while not self._rx_queue.empty():
+            self._rx_queue.get_nowait()
         self._seq = 0
         # Allow device time to settle before sending first command
         await asyncio.sleep(0.5)
@@ -418,12 +431,10 @@ class PetkitBleClient:
                 else:
                     self._parse_state_generic(data, payload_210)
 
-            # CMD 211 — device config
-            payload_211 = await self._send_and_wait(CMD_GET_CONFIG, FRAME_TYPE_SEND, [])
-            if payload_211 is not None:
-                if alias in CTW3_ALIASES:
-                    self._parse_config_ctw3(data, payload_211)
-                else:
+            # CMD 211 — device config (not supported by CTW3: device does not respond)
+            if alias not in CTW3_ALIASES:
+                payload_211 = await self._send_and_wait(CMD_GET_CONFIG, FRAME_TYPE_SEND, [])
+                if payload_211 is not None:
                     self._parse_config_generic(data, payload_211)
 
             # CMD 66 — raw ADC voltage (2 bytes little-endian per protocol spec)
