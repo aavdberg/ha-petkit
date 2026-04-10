@@ -51,6 +51,7 @@ class PetkitFountainData:
 
     alias: str = ""
     firmware: str = ""
+    hardware_version: str = ""
     rssi: int | None = None
 
     # Power & mode (CMD 210)
@@ -417,11 +418,17 @@ class PetkitBleClient:
             await self._connect()
             await self._authenticate(alias, secret)
 
-            # CMD 200 — firmware version: byte[0]=hardware, byte[1]=firmware
+            # CMD 200 — firmware version: byte[0]=hardware revision, byte[1]=firmware version
             payload_200 = await self._send_and_wait(CMD_GET_FIRMWARE, FRAME_TYPE_SEND, [])
             if payload_200 is not None and len(payload_200) >= 2:
-                data.firmware = f"{payload_200[0]}.{payload_200[1]}"
-                _LOGGER.debug("CMD 200 firmware payload: %s → %s", payload_200.hex(), data.firmware)
+                data.hardware_version = str(payload_200[0])
+                data.firmware = str(payload_200[1])
+                _LOGGER.debug(
+                    "CMD 200 firmware payload: %s → hw=%s fw=%s",
+                    payload_200.hex(),
+                    data.hardware_version,
+                    data.firmware,
+                )
 
             # CMD 210 — device state
             payload_210 = await self._send_and_wait(CMD_GET_STATE, FRAME_TYPE_SEND, [])
