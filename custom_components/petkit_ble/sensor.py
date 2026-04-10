@@ -121,6 +121,12 @@ SENSOR_DESCRIPTIONS: tuple[PetkitSensorEntityDescription, ...] = (
         value_fn=lambda d: d.firmware or None,
     ),
     PetkitSensorEntityDescription(
+        key="hardware_version",
+        translation_key="hardware_version",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda d: d.hardware_version or None,
+    ),
+    PetkitSensorEntityDescription(
         key="rssi",
         translation_key="rssi",
         native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,

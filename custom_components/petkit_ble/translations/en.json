@@ -48,6 +48,7 @@
       "energy_today": {"name": "Energy Today"},
       "filter_days_remaining": {"name": "Filter Days Remaining"},
       "firmware": {"name": "Firmware"},
+      "hardware_version": {"name": "Hardware Version"},
       "rssi": {"name": "Signal Strength"}
     },
     "binary_sensor": {

@@ -48,6 +48,7 @@
       "energy_today": {"name": "Energieverbruik vandaag"},
       "filter_days_remaining": {"name": "Resterende filterdagen"},
       "firmware": {"name": "Firmware"},
+      "hardware_version": {"name": "Hardwareversie"},
       "rssi": {"name": "Signaalsterkte"}
     },
     "binary_sensor": {
