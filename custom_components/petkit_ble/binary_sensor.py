@@ -86,7 +86,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[PetkitBinarySensorDescription, ...] = (
         key="suspended",
         translation_key="suspended",
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda d: bool(d.suspend_status),
+        value_fn=lambda d: not bool(d.suspend_status),
         available_fn=lambda d: d.is_ctw3,
     ),
 )
