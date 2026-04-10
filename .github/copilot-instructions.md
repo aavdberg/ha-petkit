@@ -63,23 +63,21 @@ custom_components/petkit_ble/
 ```
 
 ### Authentication Sequence (every connection)
-1. **CMD 213** — request device ID
-2. **CMD 73** — request challenge bytes
-3. **CMD 86** — send computed secret; response[0] must equal `1` for success
+1. **CMD 213** — request device ID (big-endian for CMD 73 payload)
+2. **CMD 73** — register a fresh random 8-byte secret: `device_id_be + random_8_bytes`
+3. **CMD 86** — verify the same secret; response[0] must equal `1` for success
 4. **CMD 84** — set device time (Petkit epoch: 2000-01-01, offset = 946684800)
 
-### CTW3 Authentication Quirk (CRITICAL)
-Always use `[0]*6` as the `device_id` for secret computation, **regardless** of what
-CMD 213 returns. Using the actual CMD 213 bytes causes CMD 86 to fail and the device
-disconnects silently.
+**Why always full re-init (CMD 73 every connection):** CMD 86 returns `response[0]=1`
+("success") even with a stale or wrong secret — it is a false positive. The device only
+enters an authenticated session if CMD 73 was sent first in the current connection.
+Skipping CMD 73 causes CMD 200/210 to be silently ignored. Running CMD 73 on every
+connection makes the integration immune to the iOS app (or any other BLE client)
+resetting the device's auth state.
 
-### Secret Computation
-```python
-base = list(reversed([0]*6))          # always [0,0,0,0,0,0]
-if base[-2] == 0 and base[-1] == 0:
-    base[-2], base[-1] = 13, 37
-secret = [0] * (8 - len(base)) + base  # left-pad to 8 bytes
-```
+### CTW3 Authentication Note
+CMD 73 uses the device_id from CMD 213 converted to big-endian; followed by a new
+`secrets.token_bytes(8)` generated per connection. No fixed/hardcoded values needed.
 
 ### Key Commands
 | CMD | Direction | Purpose |
