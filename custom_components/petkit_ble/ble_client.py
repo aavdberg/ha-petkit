@@ -420,14 +420,6 @@ class PetkitBleClient:
         data = PetkitFountainData(alias=alias)
         try:
             await self._connect()
-
-            # GATT Device Information Service — serial number (standard BLE, no auth needed)
-            assert self._client is not None
-            with contextlib.suppress(Exception):
-                sn_bytes = await self._client.read_gatt_char(GATT_SERIAL_NUMBER_UUID)
-                data.serial_number = sn_bytes.decode("utf-8", errors="ignore").strip()
-                _LOGGER.debug("Serial number: %s", data.serial_number)
-
             await self._authenticate(alias, secret)
 
             # CMD 200 — firmware version: byte[0]=hardware revision, byte[1]=firmware version
@@ -460,6 +452,15 @@ class PetkitBleClient:
             payload_66 = await self._send_and_wait(CMD_GET_BATTERY, FRAME_TYPE_SEND, [0, 0])
             if payload_66 is not None and len(payload_66) >= 2:
                 data.battery_voltage_mv_66 = payload_66[0] + payload_66[1] * 256
+
+            # GATT Device Information Service — serial number (standard BLE).
+            # Read AFTER all Petkit commands: some devices disconnect when unsupported
+            # GATT characteristics are accessed before the application-level auth completes.
+            assert self._client is not None
+            with contextlib.suppress(Exception):
+                sn_bytes = await self._client.read_gatt_char(GATT_SERIAL_NUMBER_UUID)
+                data.serial_number = sn_bytes.decode("utf-8", errors="ignore").strip()
+                _LOGGER.debug("Serial number: %s", data.serial_number)
 
         finally:
             await self.disconnect()
