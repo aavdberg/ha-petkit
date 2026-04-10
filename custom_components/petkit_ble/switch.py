@@ -59,7 +59,13 @@ class PetkitPowerSwitch(PetkitBleEntity, SwitchEntity):
         raw_mode = self.coordinator.data.mode if self.coordinator.data else 1
         mode = raw_mode if raw_mode in (1, 2) else 1
 
-        success = await self.coordinator.async_send_command(CMD_SET_POWER_MODE, [power_state, mode])
+        # CTW3 CMD 220 uses a 3-byte payload [power, suspend_status, mode] because its
+        # state response has suspend_status at byte[1] and mode at byte[2]. Generic
+        # devices use [power, mode] (2 bytes, mode at byte[1]).
+        data = self.coordinator.data
+        payload = [power_state, 0, mode] if data is not None and data.is_ctw3 else [power_state, mode]
+
+        success = await self.coordinator.async_send_command(CMD_SET_POWER_MODE, payload)
         if success:
             await self.coordinator.async_request_refresh()
         else:
