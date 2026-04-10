@@ -57,10 +57,14 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
             try:
                 data = await client.async_poll(self._alias, self._secret)
             except Exception as exc:
+                # Clear the stored secret so the next poll attempts a full re-initialisation
+                # (CMD 213 + CMD 73 + CMD 86).  This recovers the common case where another
+                # BLE client (e.g. the official iOS app) has changed the device's auth state.
+                self._secret = None
                 raise UpdateFailed(f"Error communicating with {self._name}: {exc}") from exc
 
-            # Persist the secret after first-time device initialisation
-            if self._secret is None and client.used_secret is not None:
+            # Persist the secret after first-time or re-initialisation
+            if client.used_secret is not None and client.used_secret != self._secret:
                 self._secret = client.used_secret
                 new_data = {**self._config_entry.data, CONF_DEVICE_SECRET: self._secret.hex()}
                 self.hass.config_entries.async_update_entry(self._config_entry, data=new_data)
