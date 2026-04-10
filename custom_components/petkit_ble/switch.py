@@ -63,10 +63,7 @@ class PetkitPowerSwitch(PetkitBleEntity, SwitchEntity):
         # state response has suspend_status at byte[1] and mode at byte[2]. Generic
         # devices use [power, mode] (2 bytes, mode at byte[1]).
         data = self.coordinator.data
-        if data is not None and data.is_ctw3:
-            payload = [power_state, 0, mode]
-        else:
-            payload = [power_state, mode]
+        payload = [power_state, 0, mode] if data is not None and data.is_ctw3 else [power_state, mode]
 
         success = await self.coordinator.async_send_command(CMD_SET_POWER_MODE, payload)
         if success:
