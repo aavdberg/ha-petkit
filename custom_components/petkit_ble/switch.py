@@ -54,16 +54,24 @@ class PetkitPowerSwitch(PetkitBleEntity, SwitchEntity):
         await self._set_power(0)
 
     async def _set_power(self, power_state: int) -> None:
-        """Send CMD 220 with the desired power state, keeping the current mode."""
-        # Use the last known mode; default to 1 (normal) if data is absent or mode is invalid.
-        raw_mode = self.coordinator.data.mode if self.coordinator.data else 1
-        mode = raw_mode if raw_mode in (1, 2) else 1
+        """Send CMD 220 with the desired power state.
 
-        # CTW3 CMD 220 uses a 3-byte payload [power, suspend_status, mode] because its
-        # state response has suspend_status at byte[1] and mode at byte[2]. Generic
-        # devices use [power, mode] (2 bytes, mode at byte[1]).
+        Per the reverse-engineered W5 protocol, CMD 220 byte[0] encodes power and mode:
+        0=off, 1=normal (on), 2=smart (on). CTW3 uses [power, suspend, mode] (3 bytes).
+        """
         data = self.coordinator.data
-        payload = [power_state, 0, mode] if data is not None and data.is_ctw3 else [power_state, mode]
+
+        if data is not None and data.is_ctw3:
+            # CTW3: [power, suspend_status=0, mode]
+            raw_mode = data.mode if data.mode in (1, 2) else 1
+            payload = [power_state, 0, raw_mode]
+        else:
+            # Generic W5/CTW2: byte[0] encodes power+mode (0=off, 1=normal, 2=smart)
+            if power_state == 0:
+                payload = [0, 0]
+            else:
+                raw_mode = data.mode if data is not None and data.mode in (1, 2) else 1
+                payload = [raw_mode, 0]
 
         success = await self.coordinator.async_send_command(CMD_SET_POWER_MODE, payload)
         if success:
