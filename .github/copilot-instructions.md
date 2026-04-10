@@ -88,15 +88,17 @@ secret = [0] * (8 - len(base)) + base  # left-pad to 8 bytes
 | 73  | Read | Challenge bytes |
 | 86  | Write | Auth secret |
 | 84  | Write | Set device time |
-| 210 | Read | Device state (W4/W5/CTW2) |
-| 211 | Read | Device state (CTW3) |
-| 66  | Read | Firmware version |
-| 220 | Write | Power on/off |
+| 210 | Read | Device state (ALL devices; CTW3 returns 26 bytes, W4/W5/CTW2 return 12 bytes) |
+| 211 | Read | Device config (DND times, LED, smart-mode on/off duration) — CTW3 only |
+| 66  | Read | Battery / ADC voltage |
+| 200 | Read | Firmware + hardware version |
+| 220 | Write | Power on/off / mode |
 | 222 | Write | Reset filter |
 
 ### State Payload Layout
 - **W4/W5/CTW2** (CMD 210): 12+ bytes, big-endian
-- **CTW3** (CMD 211): 26+ bytes — has `suspend_status`, `electric_status`, `battery_level`, `detect_status`
+- **CTW3** (CMD 210): 26+ bytes — has `suspend_status`, `electric_status`, `battery_level`, `detect_status`
+  (CTW3 uses the **same CMD 210** as other devices, just with an extended 26-byte payload)
 
 ---
 
@@ -148,6 +150,22 @@ W5     → W5
 CTW3   → CTW3
 CTW2   → CTW2
 ```
+
+### Marketing Name ↔ BLE Name Mapping
+
+| BLE Advertisement Name | Product (marketing name) | Notes |
+|---|---|---|
+| `Petkit_CTW2_*` | Eversweet Solo 2 | Wireless, AC only, smaller |
+| `Petkit_CTW3_*` | Eversweet Max 2 (Cordless) | Wireless + AC, battery, 26-byte CMD 210 |
+| `Petkit_W5C_*` | Eversweet 3 Pro | AC only |
+| `Petkit_W5N_*` | Eversweet 3 | AC only |
+| `Petkit_W5_*` | Eversweet (original) | AC only |
+| `Petkit_W4X_*` | Eversweet W4X | AC only |
+| `Petkit_W4XUVC_*` | Eversweet W4X UVC | AC only, UV-C sterilisation |
+
+> **Note:** "CTW" is Petkit's internal hardware revision code, independent of the consumer
+> product name. The number in CTW2/CTW3 is a **hardware revision**, not a product generation.
+> Example: Eversweet Max 2 uses hardware revision CTW3; Eversweet Solo 2 uses CTW2.
 
 ---
 
