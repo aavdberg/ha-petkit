@@ -89,9 +89,8 @@ class PetkitFountainData:
     do_not_disturb_switch: int = 0
     is_locked: int = 0
 
-    # CMD 66 battery (for non-CTW3)
+    # CMD 66 battery (raw ADC voltage, little-endian, for non-CTW3)
     battery_voltage_mv_66: int = 0
-    battery_percent_66: int = 0
 
     @property
     def is_ctw3(self) -> bool:
@@ -427,11 +426,10 @@ class PetkitBleClient:
                 else:
                     self._parse_config_generic(data, payload_211)
 
-            # CMD 66 — battery (mainly for non-CTW3)
-            payload_66 = await self._send_and_wait(CMD_GET_BATTERY, FRAME_TYPE_SEND, [])
-            if payload_66 is not None and len(payload_66) >= 3:
-                data.battery_voltage_mv_66 = payload_66[0] * 256 + (payload_66[1] & 0xFF)
-                data.battery_percent_66 = payload_66[2]
+            # CMD 66 — raw ADC voltage (2 bytes little-endian per protocol spec)
+            payload_66 = await self._send_and_wait(CMD_GET_BATTERY, FRAME_TYPE_SEND, [0, 0])
+            if payload_66 is not None and len(payload_66) >= 2:
+                data.battery_voltage_mv_66 = payload_66[0] + payload_66[1] * 256
 
         finally:
             await self.disconnect()
