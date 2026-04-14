@@ -83,6 +83,34 @@ HA will scan for nearby Petkit fountains automatically. If none appear, enter th
 
 The integration polls the fountain every 60 seconds. Commands (pump on/off, filter reset) connect on demand and refresh the state immediately after.
 
+## Dashboard
+
+A ready-made dashboard YAML is included in [`docs/dashboard.yaml`](docs/dashboard.yaml) that mirrors the Petkit iOS app layout.
+
+### Import the dashboard
+
+1. In Home Assistant, go to **Settings → Dashboards → Add Dashboard**
+2. Choose **New dashboard from scratch**
+3. Open the new dashboard, click ⋮ → **Edit dashboard** → ⋮ → **Raw configuration editor**
+4. Paste the contents of [`docs/dashboard.yaml`](docs/dashboard.yaml)
+5. Save
+
+> **Note:** The YAML uses entity prefix `petkit_ctw3_100`. If your device has a different prefix, use find-and-replace to update all entity IDs.
+
+### Sections
+
+| Section | Contents |
+|---------|----------|
+| **Controls** | Power switch, mode selector (Normal/Smart) |
+| **Status** | Pump running, pet drinking, AC power, DND, warnings |
+| **Daily Statistics** | Water purified, energy used, pump runtime, drink events |
+| **Filter** | Filter life gauge, days remaining, reset button |
+| **Battery** | Battery gauge, voltage, AC power, pump suspended |
+| **Settings** | Smart work/sleep timing, LED brightness & schedule, DND schedule |
+| **Device Info** | Firmware, hardware version, BLE RSSI, total pump runtime, UVC |
+
+---
+
 ## Protocol Notes
 
 Communication uses a proprietary BLE protocol over two GATT characteristics (notify + write-without-response). Authentication is required on every connection.

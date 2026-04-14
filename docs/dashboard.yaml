@@ -1,0 +1,192 @@
+##############################################################################
+# Petkit BLE Water Fountain – Home Assistant Dashboard
+#
+# A single-page dashboard that mirrors the Petkit iOS app layout.
+# Replace "petkit_ctw3_100" with your own device entity prefix if different.
+#
+# Import: Settings → Dashboards → Add → paste this YAML in raw editor.
+##############################################################################
+
+title: Petkit Water Fountain
+views:
+  - title: Petkit CTW3
+    path: petkit
+    type: sections
+    sections:
+      # ── Controls ──────────────────────────────────────────────────────
+      - title: Controls
+        type: grid
+        cards:
+          - type: heading
+            heading: "🐾 Petkit CTW3"
+            heading_style: title
+
+          - type: entities
+            entities:
+              - entity: switch.petkit_ctw3_100_power
+                name: Power
+              - entity: select.petkit_ctw3_100_mode
+                name: Mode
+
+      # ── Live Status ──────────────────────────────────────────────────
+      - title: Status
+        type: grid
+        cards:
+          - type: glance
+            entities:
+              - entity: binary_sensor.petkit_ctw3_100_pump_running
+                name: Pump
+              - entity: binary_sensor.petkit_ctw3_100_pet_detected
+                name: Pet Drinking
+              - entity: binary_sensor.petkit_ctw3_100_on_ac_power
+                name: AC Power
+              - entity: binary_sensor.petkit_ctw3_100_dnd_active
+                name: DND
+            show_state: true
+
+          - type: glance
+            entities:
+              - entity: binary_sensor.petkit_ctw3_100_warning_water_missing
+                name: No Water
+              - entity: binary_sensor.petkit_ctw3_100_warning_filter
+                name: Filter Warn
+              - entity: binary_sensor.petkit_ctw3_100_warning_breakdown
+                name: Breakdown
+              - entity: binary_sensor.petkit_ctw3_100_low_battery
+                name: Low Battery
+            show_state: true
+
+      # ── Daily Statistics ─────────────────────────────────────────────
+      - title: Daily Statistics
+        type: grid
+        cards:
+          - type: statistic
+            entity: sensor.petkit_ctw3_100_water_purified_today
+            name: Water Purified
+            period:
+              calendar:
+                period: day
+            stat_type: state
+
+          - type: statistic
+            entity: sensor.petkit_ctw3_100_energy_today
+            name: Energy Used
+            period:
+              calendar:
+                period: day
+            stat_type: state
+
+          - type: entity
+            entity: sensor.petkit_ctw3_100_pump_runtime_today
+            name: Pump Runtime Today
+
+          - type: entity
+            entity: sensor.petkit_ctw3_100_drink_count
+            name: Drink Events
+            icon: mdi:cup-water
+
+      # ── Filter ───────────────────────────────────────────────────────
+      - title: Filter
+        type: grid
+        cards:
+          - type: gauge
+            entity: sensor.petkit_ctw3_100_filter_percent
+            name: Filter Life
+            min: 0
+            max: 100
+            severity:
+              green: 50
+              yellow: 20
+              red: 0
+
+          - type: entity
+            entity: sensor.petkit_ctw3_100_filter_days_remaining
+            name: Days Remaining
+            icon: mdi:calendar-clock
+
+          - type: button
+            entity: button.petkit_ctw3_100_reset_filter
+            name: Reset Filter
+            icon: mdi:filter-remove
+            tap_action:
+              action: call-service
+              service: button.press
+              target:
+                entity_id: button.petkit_ctw3_100_reset_filter
+              confirmation:
+                text: "Are you sure you want to reset the filter counter?"
+
+      # ── Battery & Power ──────────────────────────────────────────────
+      - title: Battery
+        type: grid
+        cards:
+          - type: gauge
+            entity: sensor.petkit_ctw3_100_battery_percent
+            name: Battery
+            min: 0
+            max: 100
+            severity:
+              green: 50
+              yellow: 20
+              red: 0
+
+          - type: entity
+            entity: sensor.petkit_ctw3_100_battery_voltage_mv
+            name: Battery Voltage
+
+          - type: entity
+            entity: binary_sensor.petkit_ctw3_100_on_ac_power
+            name: AC Power
+
+          - type: entity
+            entity: binary_sensor.petkit_ctw3_100_suspended
+            name: Pump Suspended
+
+      # ── Smart Mode Settings ──────────────────────────────────────────
+      - title: Smart Mode Settings
+        type: grid
+        cards:
+          - type: entities
+            title: Smart Mode Timing
+            entities:
+              - entity: number.petkit_ctw3_100_smart_work_minutes
+                name: Work Duration (min)
+              - entity: number.petkit_ctw3_100_smart_sleep_minutes
+                name: Sleep Duration (min)
+
+          - type: entities
+            title: LED Schedule
+            entities:
+              - entity: number.petkit_ctw3_100_led_brightness
+                name: LED Brightness
+              - entity: time.petkit_ctw3_100_led_on_time
+                name: LED On Time
+              - entity: time.petkit_ctw3_100_led_off_time
+                name: LED Off Time
+
+          - type: entities
+            title: Do Not Disturb
+            entities:
+              - entity: time.petkit_ctw3_100_dnd_start_time
+                name: DND Start
+              - entity: time.petkit_ctw3_100_dnd_end_time
+                name: DND End
+
+      # ── Device Info ──────────────────────────────────────────────────
+      - title: Device Info
+        type: grid
+        cards:
+          - type: entities
+            entities:
+              - entity: sensor.petkit_ctw3_100_firmware
+                name: Firmware
+              - entity: sensor.petkit_ctw3_100_hardware_version
+                name: Hardware
+              - entity: sensor.petkit_ctw3_100_rssi
+                name: BLE Signal (RSSI)
+              - entity: sensor.petkit_ctw3_100_pump_runtime
+                name: Total Pump Runtime
+
+          - type: entity
+            entity: binary_sensor.petkit_ctw3_100_uvc_active
+            name: UVC Sterilization
