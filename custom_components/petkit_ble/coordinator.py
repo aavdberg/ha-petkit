@@ -72,11 +72,12 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
             "Polled %s: power=%s mode=%s firmware=%s", self._name, data.power_status, data.mode, data.firmware
         )
 
-        # Track drink events: detect_status transitions 0→1 while pump is running
+        # Track drink events: detect_status transitions 0→1
+        # No pump check — in smart mode the pump may be off while pet drinks
         cur_detect = data.detect_status
-        cur_pump = data.is_pump_running
-        if self._prev_detect_status is not None and self._prev_detect_status == 0 and cur_detect == 1 and cur_pump:
+        if self._prev_detect_status is not None and self._prev_detect_status == 0 and cur_detect == 1:
             self._drink_event_count += 1
+            _LOGGER.debug("Drink event detected (count=%d)", self._drink_event_count)
         self._prev_detect_status = cur_detect
         data.drink_event_count = self._drink_event_count
 
