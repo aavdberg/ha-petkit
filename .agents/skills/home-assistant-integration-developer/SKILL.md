@@ -71,7 +71,7 @@ custom_components/<domain>/
 ├── number.py            # Number platform
 ├── time.py              # Time platform
 ├── select.py            # Select platform
-├── strings.json         # Source-of-truth translations (English)
+├── strings.json         # Config/options flow strings (English); entity strings live in translations/en.json
 └── translations/        # Per-language translations
     ├── en.json
     └── <lang>.json

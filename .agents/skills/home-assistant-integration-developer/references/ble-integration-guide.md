@@ -92,7 +92,7 @@ async def _send_and_wait(self, cmd: int, payload: bytes) -> bytes | None:
 
     try:
         await asyncio.wait_for(self._response_event.wait(), timeout=5.0)
-    except TimeoutError:
+    except asyncio.TimeoutError:
         return None
 
     return self._response_data

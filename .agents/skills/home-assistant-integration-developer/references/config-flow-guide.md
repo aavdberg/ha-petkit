@@ -42,7 +42,7 @@ async def async_step_bluetooth(
 ) -> ConfigFlowResult:
     """Handle bluetooth discovery."""
     await self.async_set_unique_id(
-        dr.format_mac(discovery_info.address)
+        discovery_info.address.upper()
     )
     self._abort_if_unique_id_configured()
 
@@ -63,7 +63,7 @@ async def async_step_user(self, user_input=None):
     errors = {}
     if user_input is not None:
         address = user_input[CONF_ADDRESS]
-        await self.async_set_unique_id(dr.format_mac(address))
+        await self.async_set_unique_id(address.upper())
         self._abort_if_unique_id_configured()
 
         # Validate connection if needed
