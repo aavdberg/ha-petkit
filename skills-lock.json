@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "write-a-prd": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "computedHash": "d4234a2ebcf89b745a9e33f7e0831aef6ff5cbe48f91db54796ae7cd897d78a8"
+    }
+  }
+}

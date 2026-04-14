@@ -12,16 +12,23 @@
       "bluetooth_confirm": {
         "title": "Confirm Petkit Fountain",
         "description": "Do you want to set up the **{name}** fountain ({address})?"
+      },
+      "init_device": {
+        "title": "Initialize Device",
+        "description": "The device **{name}** needs to be initialized. This will register a secret with the device. **Warning:** After initialization, the PetKit app will no longer be able to connect to this device. You can factory reset the device to restore app access."
       }
     },
     "error": {
       "no_devices_found": "No Petkit fountains were found nearby. Enter the MAC address manually.",
       "cannot_connect": "Could not connect to the device. Make sure it is powered on and in range.",
-      "unknown": "An unexpected error occurred."
+      "unknown": "An unexpected error occurred.",
+      "device_already_initialized": "Device is already initialized. Please factory reset it first (detach control module, hold power button 3 seconds until LEDs flash).",
+      "init_failed": "Failed to initialize the device. Please try again."
     },
     "abort": {
       "already_configured": "This device is already configured.",
-      "no_devices_found": "No Petkit fountains were found."
+      "no_devices_found": "No Petkit fountains were found.",
+      "device_already_initialized": "This device is already initialized with a secret. Please factory reset it first (detach control module, hold power button for 3 seconds until LEDs flash), then try again."
     }
   }
 }

@@ -3,17 +3,20 @@
 from __future__ import annotations
 
 import logging
+import secrets
 from typing import Any
 
 import voluptuous as vol
 from homeassistant.components.bluetooth import (
     BluetoothServiceInfoBleak,
+    async_ble_device_from_address,
     async_discovered_service_info,
 )
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult, OptionsFlow
 from homeassistant.const import CONF_ADDRESS
 from homeassistant.core import callback
 
+from .ble_client import PetkitBleClient
 from .const import (
     ALIAS_CTW2,
     ALIAS_CTW3,
@@ -23,6 +26,7 @@ from .const import (
     ALIAS_W5C,
     ALIAS_W5N,
     CONF_DEBUG,
+    CONF_DEVICE_SECRET,
     CONF_MODEL,
     CONF_NAME,
     DOMAIN,
@@ -65,6 +69,7 @@ class PetkitBleConfigFlow(ConfigFlow, domain=DOMAIN):
         """Initialise the config flow."""
         self._discovered_devices: dict[str, str] = {}  # address -> name
         self._bluetooth_info: BluetoothServiceInfoBleak | None = None
+        self._pending_data: dict[str, Any] = {}  # data waiting for init
 
     @staticmethod
     @callback
@@ -92,14 +97,12 @@ class PetkitBleConfigFlow(ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             alias = _get_alias_from_name(info.name)
-            return self.async_create_entry(
-                title=info.name,
-                data={
-                    CONF_ADDRESS: info.address.upper(),
-                    CONF_NAME: info.name,
-                    CONF_MODEL: alias,
-                },
-            )
+            self._pending_data = {
+                CONF_ADDRESS: info.address.upper(),
+                CONF_NAME: info.name,
+                CONF_MODEL: alias,
+            }
+            return await self.async_step_init_device()
 
         return self.async_show_form(
             step_id="bluetooth_confirm",
@@ -120,14 +123,12 @@ class PetkitBleConfigFlow(ConfigFlow, domain=DOMAIN):
             self._abort_if_unique_id_configured()
 
             alias = _get_alias_from_name(name)
-            return self.async_create_entry(
-                title=name,
-                data={
-                    CONF_ADDRESS: address,
-                    CONF_NAME: name,
-                    CONF_MODEL: alias,
-                },
-            )
+            self._pending_data = {
+                CONF_ADDRESS: address,
+                CONF_NAME: name,
+                CONF_MODEL: alias,
+            }
+            return await self.async_step_init_device()
 
         # Collect Petkit devices visible in current BLE scan results
         discovered: dict[str, str] = {}  # address -> name
@@ -160,6 +161,68 @@ class PetkitBleConfigFlow(ConfigFlow, domain=DOMAIN):
             ),
             errors={"base": "no_devices_found"},
         )
+
+    # ------------------------------------------------------------------
+    # Device initialization
+    # ------------------------------------------------------------------
+
+    async def async_step_init_device(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Check if device needs initialization and handle it."""
+        address = self._pending_data[CONF_ADDRESS]
+        name = self._pending_data[CONF_NAME]
+        errors: dict[str, str] = {}
+
+        ble_device = async_ble_device_from_address(self.hass, address, connectable=True)
+        if ble_device is None:
+            # Device not reachable — create entry without secret (legacy mode)
+            _LOGGER.warning("Device %s not reachable for init, creating entry without secret", name)
+            return self.async_create_entry(title=name, data=self._pending_data)
+
+        client = PetkitBleClient(ble_device)
+        try:
+            initialized, device_id = await client.async_check_initialized()
+        except Exception:
+            _LOGGER.exception("Failed to check device init status for %s", name)
+            # Cannot check — create entry without secret
+            return self.async_create_entry(title=name, data=self._pending_data)
+
+        if initialized:
+            # Device already has a secret — cannot use it without factory reset.
+            return self.async_abort(reason="device_already_initialized")
+
+        # Device is uninitialized — generate secret and init
+        secret = secrets.token_bytes(8)
+        try:
+            ble_device2 = async_ble_device_from_address(self.hass, address, connectable=True)
+            if ble_device2 is None:
+                errors["base"] = "cannot_connect"
+                return self.async_show_form(
+                    step_id="init_device",
+                    description_placeholders={"name": name},
+                    errors=errors,
+                )
+            client2 = PetkitBleClient(ble_device2)
+            success = await client2.async_init_device(device_id, secret)
+
+            if not success:
+                errors["base"] = "init_failed"
+                return self.async_show_form(
+                    step_id="init_device",
+                    description_placeholders={"name": name},
+                    errors=errors,
+                )
+        except Exception:
+            _LOGGER.exception("Failed to initialize device %s", name)
+            errors["base"] = "init_failed"
+            return self.async_show_form(
+                step_id="init_device",
+                description_placeholders={"name": name},
+                errors=errors,
+            )
+
+        # Store the secret in config data
+        entry_data = {**self._pending_data, CONF_DEVICE_SECRET: secret.hex()}
+        return self.async_create_entry(title=name, data=entry_data)
 
 
 class PetkitBleOptionsFlow(OptionsFlow):
