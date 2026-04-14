@@ -119,7 +119,7 @@ def native_value(self):
 # ❌ Bad — network I/O in property
 @property
 def native_value(self):
-    return await self.client.fetch_temperature()  # NEVER DO THIS
+    return self.client.fetch_temperature()  # NEVER DO THIS
 ```
 
 ## State Classes
