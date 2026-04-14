@@ -44,7 +44,7 @@ via a proxy, HA will use it automatically.
 Many BLE devices use a framing protocol:
 
 ```python
-def encode_frame(cmd: int, payload: bytes) -> bytes:
+def encode_frame(cmd: int, seq: int, payload: bytes) -> bytes:
     """Encode a command frame."""
     data_len = len(payload)
     frame = bytearray([
@@ -53,7 +53,7 @@ def encode_frame(cmd: int, payload: bytes) -> bytes:
         FRAME_HEADER_2,  # e.g., 0xFD
         cmd,
         0x01,            # type
-        self._seq,       # sequence number
+        seq,             # sequence number
         data_len,
         0x00,
         *payload,
