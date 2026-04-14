@@ -179,20 +179,32 @@ CTW2   → CTW2
 
 Both `main` and `dev` are protected: PRs required, ruff lint must pass.
 
-### ⚠️ CRITICAL RULE — Always follow this workflow:
-```
-git checkout dev && git pull
-git checkout -b fix/my-fix          # or feature/, chore/
-# make changes
-git add ... && git commit -m "fix: ..."
-git push -u origin fix/my-fix
-gh pr create --base dev --head fix/my-fix --title "..." --body "..."
-# wait for CI to pass, then merge
-```
+### ⚠️ CRITICAL RULE — Mandatory workflow for every change:
+
+Every change — no matter how small — **must** follow these steps in order:
+
+1. **Plan** — Analyse the problem, explore the codebase, and create a clear plan
+   (what will change, which files, why). Save the plan to `plan.md`.
+2. **Confirm** — Present the plan to the user and **ask for approval** before writing
+   any code. Do **not** proceed until the user confirms.
+3. **Issue** — Create a GitHub Issue describing the change (bug report, feature request,
+   or chore). Reference any related issues/PRs.
+4. **Branch** — Create a branch from `dev` following the naming convention:
+   ```
+   git checkout dev && git pull
+   git checkout -b fix/my-fix          # or feature/, chore/
+   ```
+5. **Implement** — Make the code changes, run linter (`ruff check` + `ruff format --check`)
+   and tests (`python -m pytest tests/ -v`), and commit with Conventional Commits.
+6. **Push & PR** — Push the branch and open a Pull Request targeting `dev`:
+   ```
+   git push -u origin fix/my-fix
+   gh pr create --base dev --head fix/my-fix --title "..." --body "..."
+   ```
+7. **CI** — Wait for CI to pass, then inform the user.
 
 **NEVER commit or push directly to `dev` or `main`.**  
 Even as admin (bypassed protection), direct pushes skip CI and break the audit trail.
-Every change — no matter how small — must go through a PR to `dev`.
 
 ---
 
