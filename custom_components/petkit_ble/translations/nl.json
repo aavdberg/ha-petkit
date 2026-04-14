@@ -44,6 +44,19 @@
       }
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Petkit BLE opties",
+        "data": {
+          "debug": "Debug-logging inschakelen"
+        },
+        "data_description": {
+          "debug": "Log elk BLE-frame (TX/RX) en elke authenticatiestap. Handig voor het diagnosticeren van verbindingsproblemen. Schakel uit in productie."
+        }
+      }
+    }
+  },
   "entity": {
     "sensor": {
       "filter_percent": {"name": "Filterlevensduur"},

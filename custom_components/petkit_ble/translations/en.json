@@ -44,6 +44,19 @@
       }
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Petkit BLE Options",
+        "data": {
+          "debug": "Enable debug logging"
+        },
+        "data_description": {
+          "debug": "Log every BLE frame (TX/RX) and authentication step. Useful for diagnosing connection issues. Disable in production."
+        }
+      }
+    }
+  },
   "entity": {
     "sensor": {
       "filter_percent": {"name": "Filter Life"},
