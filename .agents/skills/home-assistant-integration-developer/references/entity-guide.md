@@ -84,7 +84,11 @@ async def async_setup_entry(
 Format: `{normalized_address}_{key}`
 
 ```python
-self._attr_unique_id = f"{coordinator.address}_{description.key}"
+from homeassistant.helpers import device_registry as dr
+
+self._attr_unique_id = (
+    f"{dr.format_mac(coordinator.address)}_{description.key}"
+)
 ```
 
 Use `dr.format_mac()` to normalize MAC addresses.
