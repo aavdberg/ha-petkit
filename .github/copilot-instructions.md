@@ -201,7 +201,18 @@ Every change — no matter how small — **must** follow these steps in order:
    git push -u origin fix/my-fix
    gh pr create --base dev --head fix/my-fix --title "..." --body "..."
    ```
-7. **CI** — Wait for CI to pass, then inform the user.
+7. **CI** — Wait for all CI checks to pass (ruff lint, ruff format, HACS validation).
+8. **Review** — After CI passes, check the Copilot code review on the PR:
+   - Retrieve all review comments using the GitHub API / `gh` CLI.
+   - If there are comments or suggestions, **fix them** in a new commit on the same branch.
+   - Reply to each review thread explaining what was fixed.
+   - **Resolve** all review threads (using GraphQL `resolveReviewThread` mutation).
+   - Push the fixes and wait for CI to pass again.
+   - Repeat until there are no unresolved comments.
+9. **Merge** — Once CI passes and all review comments are resolved, merge the PR into `dev`:
+   ```
+   gh pr merge <PR_NUMBER> --squash --delete-branch
+   ```
 
 **NEVER commit or push directly to `dev` or `main`.**  
 Even as admin (bypassed protection), direct pushes skip CI and break the audit trail.
