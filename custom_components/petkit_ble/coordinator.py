@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
 
 from .ble_client import PetkitBleClient, PetkitFountainData
-from .const import CONF_ADDRESS, CONF_MODEL, CONF_NAME, DOMAIN, POLL_INTERVAL
+from .const import CONF_ADDRESS, CONF_DEVICE_SECRET, CONF_MODEL, CONF_NAME, DOMAIN, POLL_INTERVAL
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -30,6 +30,18 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
         self._name: str = config_entry.data[CONF_NAME]
         self._config_entry = config_entry
         self._ble_lock = asyncio.Lock()
+
+        # Stored secret from device initialization (may be None for legacy entries)
+        secret_hex = config_entry.data.get(CONF_DEVICE_SECRET)
+        try:
+            self._secret: bytes | None = bytes.fromhex(secret_hex) if secret_hex else None
+        except ValueError:
+            _LOGGER.warning("Corrupted device secret for %s, treating as None", self._address)
+            self._secret = None
+
+        # Track drink events across polls
+        self._prev_detect_status: int | None = None
+        self._drink_event_count: int = 0
 
         super().__init__(
             hass,
@@ -52,13 +64,21 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
             if client is None:
                 raise UpdateFailed(f"Petkit fountain {self._name} ({self._address}) not reachable via Bluetooth")
             try:
-                data = await client.async_poll(self._alias)
+                data = await client.async_poll(self._alias, self._secret)
             except Exception as exc:
                 raise UpdateFailed(f"Error communicating with {self._name}: {exc}") from exc
 
         _LOGGER.debug(
             "Polled %s: power=%s mode=%s firmware=%s", self._name, data.power_status, data.mode, data.firmware
         )
+
+        # Track drink events: detect_status transitions 0→1 while pump is running
+        cur_detect = data.detect_status
+        cur_pump = data.is_pump_running
+        if self._prev_detect_status is not None and self._prev_detect_status == 0 and cur_detect == 1 and cur_pump:
+            self._drink_event_count += 1
+        self._prev_detect_status = cur_detect
+        data.drink_event_count = self._drink_event_count
 
         # RSSI from the most recent BLE advertisement (no connection required)
         service_info = async_last_service_info(self.hass, self._address, connectable=False)
@@ -83,4 +103,4 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
                     self._address,
                 )
                 return False
-            return await client.async_send_command(cmd, data, self._alias)
+            return await client.async_send_command(cmd, data, self._alias, self._secret)

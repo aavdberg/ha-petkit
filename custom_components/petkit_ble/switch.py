@@ -1,4 +1,4 @@
-"""Switch platform for Petkit BLE (power switch)."""
+"""Switch platform for Petkit BLE (power, LED, DND, child lock)."""
 
 from __future__ import annotations
 
@@ -8,9 +8,10 @@ from homeassistant.components.switch import SwitchEntity, SwitchEntityDescriptio
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import CMD_SET_POWER_MODE
+from .const import CMD_SET_POWER_MODE, CMD_WRITE_SETTINGS
 from .coordinator import PetkitBleCoordinator
 from .entity import PetkitBleEntity
+from .protocol import build_full_settings_payload
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -27,7 +28,14 @@ async def async_setup_entry(
 ) -> None:
     """Set up Petkit BLE switches from a config entry."""
     coordinator: PetkitBleCoordinator = config_entry.runtime_data
-    async_add_entities([PetkitPowerSwitch(coordinator)])
+    async_add_entities(
+        [
+            PetkitPowerSwitch(coordinator),
+            PetkitSettingsSwitch(coordinator, "led", "led_switch"),
+            PetkitSettingsSwitch(coordinator, "do_not_disturb", "do_not_disturb_switch"),
+            PetkitSettingsSwitch(coordinator, "child_lock", "is_locked"),
+        ]
+    )
 
 
 class PetkitPowerSwitch(PetkitBleEntity, SwitchEntity):
@@ -78,3 +86,40 @@ class PetkitPowerSwitch(PetkitBleEntity, SwitchEntity):
             await self.coordinator.async_request_refresh()
         else:
             _LOGGER.error("Failed to set power state to %d", power_state)
+
+
+class PetkitSettingsSwitch(PetkitBleEntity, SwitchEntity):
+    """Switch entity for a boolean setting (LED, DND, child lock) via CMD 221."""
+
+    def __init__(self, coordinator: PetkitBleCoordinator, key: str, field_name: str) -> None:
+        """Initialise the settings switch."""
+        super().__init__(coordinator, key)
+        self.entity_description = SwitchEntityDescription(key=key, translation_key=key)
+        self._field_name = field_name
+
+    @property
+    def is_on(self) -> bool | None:
+        """Return True when the setting is enabled."""
+        if self.coordinator.data is None:
+            return None
+        return bool(getattr(self.coordinator.data, self._field_name, 0))
+
+    async def async_turn_on(self, **kwargs) -> None:
+        """Enable the setting."""
+        await self._set_value(1)
+
+    async def async_turn_off(self, **kwargs) -> None:
+        """Disable the setting."""
+        await self._set_value(0)
+
+    async def _set_value(self, value: int) -> None:
+        """Send CMD 221 with updated settings."""
+        data = self.coordinator.data
+        if data is None:
+            return
+        payload = build_full_settings_payload(data, **{self._field_name: value})
+        success = await self.coordinator.async_send_command(CMD_WRITE_SETTINGS, payload)
+        if success:
+            await self.coordinator.async_request_refresh()
+        else:
+            _LOGGER.error("Failed to set %s to %d", self._field_name, value)

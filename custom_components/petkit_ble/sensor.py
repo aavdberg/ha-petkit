@@ -129,6 +129,13 @@ SENSOR_DESCRIPTIONS: tuple[PetkitSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda d: d.rssi,
     ),
+    PetkitSensorEntityDescription(
+        key="drink_count",
+        translation_key="drink_count",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda d: d.drink_event_count,
+        available_fn=lambda d: d.is_ctw3,
+    ),
 )
 
 
