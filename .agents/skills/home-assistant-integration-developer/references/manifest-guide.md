@@ -2,7 +2,7 @@
 
 ## Required Fields
 
-Every `manifest.json` must include:
+For a Home Assistant custom integration, `manifest.json` should include these required fields:
 
 | Field | Type | Description |
 |---|---|---|
@@ -11,10 +11,18 @@ Every `manifest.json` must include:
 | `version` | string | Semantic version (e.g., `1.2.3`) |
 | `config_flow` | boolean | `true` if integration has a config flow |
 | `documentation` | string | URL to documentation |
-| `requirements` | list | PyPI packages needed (e.g., `["bleak>=0.21.1"]`) |
-| `dependencies` | list | Other HA integrations required |
 | `codeowners` | list | GitHub usernames (e.g., `["@username"]`) |
 | `iot_class` | string | How the integration communicates |
+
+## Common Optional Fields
+
+These fields are optional in Home Assistant manifests, but are often used depending on the integration:
+
+| Field | Type | Description |
+|---|---|---|
+| `requirements` | list | PyPI packages needed when the integration depends on external Python libraries (e.g., `["bleak>=0.21.1"]`) |
+| `dependencies` | list | Other HA integrations required for setup or runtime |
+| `bluetooth` | list | Bluetooth matchers used for BLE discovery |
 
 ## IoT Class
 
