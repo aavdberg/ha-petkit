@@ -194,7 +194,7 @@ Every change — no matter how small — **must** follow these steps in order:
    git checkout dev && git pull
    git checkout -b fix/my-fix          # or feature/, chore/
    ```
-5. **Implement** — Make the code changes, run linter (`ruff check` + `ruff format --check`)
+5. **Implement** — Make the code changes, run linter (`ruff check custom_components/` + `ruff format --check custom_components/`)
    and tests (`python -m pytest tests/ -v`), and commit with Conventional Commits.
 6. **Push & PR** — Push the branch and open a Pull Request targeting `dev`:
    ```
