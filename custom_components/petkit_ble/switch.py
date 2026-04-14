@@ -11,7 +11,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import CMD_SET_POWER_MODE, CMD_WRITE_SETTINGS
 from .coordinator import PetkitBleCoordinator
 from .entity import PetkitBleEntity
-from .protocol import build_full_settings_payload
+from .protocol import build_change_mode_payload, build_ctw3_mode_payload, build_full_settings_payload
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -70,16 +70,19 @@ class PetkitPowerSwitch(PetkitBleEntity, SwitchEntity):
         data = self.coordinator.data
 
         if data is not None and data.is_ctw3:
-            # CTW3: [power, suspend_status=0, mode]
+            # CTW3: [power, suspend, mode] via protocol helper.
+            # suspend=1 activates the pump (normal mode); suspend=0 lets the
+            # device's internal timer manage cycling (smart mode).
             raw_mode = data.mode if data.mode in (1, 2) else 1
-            payload = [power_state, 0, raw_mode]
+            suspend = power_state if raw_mode == 1 else 0
+            payload = build_ctw3_mode_payload(power_state, suspend, raw_mode)
         else:
             # Generic W5/CTW2: byte[0] encodes power+mode (0=off, 1=normal, 2=smart)
             if power_state == 0:
-                payload = [0, 0]
+                payload = build_change_mode_payload(0)
             else:
                 raw_mode = data.mode if data is not None and data.mode in (1, 2) else 1
-                payload = [raw_mode, 0]
+                payload = build_change_mode_payload(raw_mode)
 
         success = await self.coordinator.async_send_command(CMD_SET_POWER_MODE, payload)
         if success:

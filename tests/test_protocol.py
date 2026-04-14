@@ -164,7 +164,8 @@ class TestBuildModePayload:
     def test_ctw3_mode_payload(self) -> None:
         """CTW3 mode payload is [power, suspend, mode]."""
         assert build_ctw3_mode_payload(1, 0, 2) == [1, 0, 2]
-        assert build_ctw3_mode_payload(0, 1, 1) == [0, 1, 1]
+        # When power=0, suspend is forced to 0 regardless of the argument passed
+        assert build_ctw3_mode_payload(0, 1, 1) == [0, 0, 1]
 
 
 class TestFrameFormat:
