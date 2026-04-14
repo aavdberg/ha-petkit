@@ -157,6 +157,7 @@ class PetkitBleClient:
         self._rx_buf: bytearray = bytearray()
         self._rx_queue: asyncio.Queue[bytes] = asyncio.Queue()
         self._seq: int = 0
+        self._serial_from_cmd213: str = ""
 
     # ------------------------------------------------------------------
     # Frame encode / decode
@@ -297,11 +298,17 @@ class PetkitBleClient:
         Uses the stored secret from config_entry.data (set during device init).
         CMD 73 is NOT sent here — it is only used during initial device setup.
         """
-        # CMD 213 — get device info
+        # CMD 213 — get device info (contains serial number at bytes 8+)
         payload_213 = await self._send_and_wait(CMD_GET_DEVICE_INFO, FRAME_TYPE_SEND, [])
         if payload_213 is None or len(payload_213) < 8:
             byte_count = len(payload_213) if payload_213 is not None else 0
             raise RuntimeError(f"CMD 213 failed or response too short (got {byte_count} bytes)")
+
+        # Extract serial number from CMD 213 if available (bytes 8+)
+        if len(payload_213) > 8:
+            self._serial_from_cmd213 = payload_213[8:].decode("utf-8", errors="ignore").strip()
+        else:
+            self._serial_from_cmd213 = ""
 
         await asyncio.sleep(AUTH_STEP_DELAY)
 
@@ -490,14 +497,17 @@ class PetkitBleClient:
             if payload_66 is not None and len(payload_66) >= 2:
                 data.battery_voltage_mv_66 = payload_66[0] + payload_66[1] * 256
 
-            # GATT Device Information Service — serial number (standard BLE).
-            # Read AFTER all Petkit commands: some devices disconnect when unsupported
-            # GATT characteristics are accessed before the application-level auth completes.
+            # Serial number: prefer GATT DIS, fall back to CMD 213.
             assert self._client is not None
-            with contextlib.suppress(Exception):
+            try:
                 sn_bytes = await self._client.read_gatt_char(GATT_SERIAL_NUMBER_UUID)
                 data.serial_number = sn_bytes.decode("utf-8", errors="ignore").strip()
-                _LOGGER.debug("Serial number: %s", data.serial_number)
+                _LOGGER.debug("Serial number (GATT): %s", data.serial_number)
+            except Exception:
+                _LOGGER.debug("Could not read GATT serial number characteristic")
+            if not data.serial_number and getattr(self, "_serial_from_cmd213", ""):
+                data.serial_number = self._serial_from_cmd213
+                _LOGGER.debug("Serial number (CMD 213): %s", data.serial_number)
 
         finally:
             await self.disconnect()
