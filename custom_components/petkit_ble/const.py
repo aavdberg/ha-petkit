@@ -7,6 +7,8 @@ DOMAIN = "petkit_ble"
 # BLE UUIDs
 BLE_WRITE_UUID = "0000aaa2-0000-1000-8000-00805f9b34fb"
 BLE_NOTIFY_UUID = "0000aaa1-0000-1000-8000-00805f9b34fb"
+# Standard GATT Device Information Service — Serial Number String (0x2A25)
+GATT_SERIAL_NUMBER_UUID = "00002a25-0000-1000-8000-00805f9b34fb"
 
 # Frame markers
 FRAME_HEADER = bytes([0xFA, 0xFC, 0xFD])
@@ -16,22 +18,38 @@ FRAME_END = 0xFB
 FRAME_TYPE_SEND = 1
 FRAME_TYPE_RECV = 2
 
-# Command IDs
+# Command IDs — read
 CMD_GET_DEVICE_INFO = 213
 CMD_GET_FIRMWARE = 200
-CMD_AUTH_INIT = 73
-CMD_AUTH_VERIFY = 86
-CMD_SET_TIME = 84
 CMD_GET_STATE = 210
 CMD_GET_CONFIG = 211
+CMD_GET_EXT_LIGHT = 215
+CMD_GET_EXT_DND = 216
 CMD_GET_BATTERY = 66
+
+# Command IDs — auth / init
+CMD_DEVICE_INIT = 73
+CMD_AUTH_INIT = CMD_DEVICE_INIT  # backward compat
+CMD_AUTH_VERIFY = 86
+CMD_SET_TIME = 84
+
+# Command IDs — write
 CMD_SET_POWER_MODE = 220
+CMD_WRITE_SETTINGS = 221
 CMD_RESET_FILTER = 222
+CMD_WRITE_LIGHT_SCHEDULE = 225
+CMD_WRITE_DND_SCHEDULE = 226
 
 # Config entry keys
 CONF_ADDRESS = "address"
 CONF_NAME = "name"
 CONF_MODEL = "model"
+CONF_DEVICE_SECRET = "device_secret"
+
+# Mode values
+MODE_OFF = 0
+MODE_NORMAL = 1
+MODE_SMART = 2
 
 # Device aliases derived from BLE name
 ALIAS_CTW3 = "CTW3"
@@ -51,9 +69,6 @@ PETKIT_NAME_PREFIXES = (
 
 # Aliases that use the CTW3 26-byte state format
 CTW3_ALIASES = {ALIAS_CTW3}
-
-# Models that use all-zero device_id for auth secret computation
-ZERO_DEVICE_ID_MODELS = {ALIAS_CTW3}
 
 # Poll interval in seconds
 POLL_INTERVAL = 60

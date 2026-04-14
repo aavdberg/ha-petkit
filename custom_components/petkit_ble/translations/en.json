@@ -12,16 +12,36 @@
       "bluetooth_confirm": {
         "title": "Confirm Petkit Fountain",
         "description": "Do you want to set up the **{name}** fountain ({address})?"
+      },
+      "init_device": {
+        "title": "Initialize Device",
+        "description": "The device **{name}** needs to be initialized. This will register a secret with the device. **Warning:** After initialization, the PetKit app will no longer be able to connect to this device. You can factory reset the device to restore app access."
       }
     },
     "error": {
       "no_devices_found": "No Petkit fountains were found nearby. Enter the MAC address manually.",
       "cannot_connect": "Could not connect to the device. Make sure it is powered on and in range.",
-      "unknown": "An unexpected error occurred."
+      "unknown": "An unexpected error occurred.",
+      "device_already_initialized": "Device is already initialized. Please factory reset it first (detach control module, hold power button 3 seconds until LEDs flash).",
+      "init_failed": "Failed to initialize the device. Please try again."
     },
     "abort": {
       "already_configured": "This device is already configured.",
-      "no_devices_found": "No Petkit fountains were found."
+      "no_devices_found": "No Petkit fountains were found.",
+      "device_already_initialized": "This device is already initialized with a secret. Please factory reset it first (detach control module, hold power button for 3 seconds until LEDs flash), then try again."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Petkit BLE Options",
+        "data": {
+          "debug": "Enable debug logging"
+        },
+        "data_description": {
+          "debug": "Log every BLE frame (TX/RX) and authentication step. Useful for diagnosing connection issues. Disable in production."
+        }
+      }
     }
   },
   "options": {
@@ -48,7 +68,9 @@
       "energy_today": {"name": "Energy Today"},
       "filter_days_remaining": {"name": "Filter Days Remaining"},
       "firmware": {"name": "Firmware"},
-      "rssi": {"name": "Signal Strength"}
+      "hardware_version": {"name": "Hardware Version"},
+      "rssi": {"name": "Signal Strength"},
+      "drink_count": {"name": "Drink Events Today"}
     },
     "binary_sensor": {
       "pump_running": {"name": "Pump Running"},
@@ -58,15 +80,38 @@
       "dnd_active": {"name": "Do Not Disturb"},
       "pet_detected": {"name": "Pet Drinking"},
       "on_ac_power": {"name": "AC Power"},
-      "low_battery": {"name": "Low Battery"}
+      "low_battery": {"name": "Low Battery"},
+      "suspended": {"name": "Pump Suspended"},
+      "uvc_active": {"name": "UVC Sterilization"}
     },
     "button": {
-      "reset_filter": {"name": "Reset Filter"},
-      "pump_on": {"name": "Pump On"},
-      "pump_off": {"name": "Pump Off"}
+      "reset_filter": {"name": "Reset Filter"}
+    },
+    "number": {
+      "smart_work_minutes": {"name": "Smart Mode Work Time"},
+      "smart_sleep_minutes": {"name": "Smart Mode Sleep Time"},
+      "led_brightness": {"name": "LED Brightness"}
+    },
+    "time": {
+      "led_on_time": {"name": "LED On Time"},
+      "led_off_time": {"name": "LED Off Time"},
+      "dnd_start_time": {"name": "DND Start Time"},
+      "dnd_end_time": {"name": "DND End Time"}
+    },
+    "select": {
+      "mode": {
+        "name": "Mode",
+        "state": {
+          "normal": "Normal",
+          "smart": "Smart"
+        }
+      }
     },
     "switch": {
-      "power": {"name": "Power"}
+      "power": {"name": "Power"},
+      "led": {"name": "LED"},
+      "do_not_disturb": {"name": "Do Not Disturb"},
+      "child_lock": {"name": "Child Lock"}
     }
   }
 }

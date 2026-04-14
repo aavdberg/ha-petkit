@@ -12,16 +12,36 @@
       "bluetooth_confirm": {
         "title": "Petkit-fonteintje bevestigen",
         "description": "Wil je het fonteintje **{name}** ({address}) instellen?"
+      },
+      "init_device": {
+        "title": "Apparaat initialiseren",
+        "description": "Het apparaat **{name}** moet worden geïnitialiseerd. Dit registreert een geheim bij het apparaat. **Waarschuwing:** Na initialisatie kan de PetKit-app niet meer verbinden met dit apparaat. Je kunt het apparaat terugzetten naar fabrieksinstellingen om app-toegang te herstellen."
       }
     },
     "error": {
       "no_devices_found": "Er zijn geen Petkit-fonteintjes gevonden in de buurt. Voer het MAC-adres handmatig in.",
       "cannot_connect": "Kan geen verbinding maken met het apparaat. Zorg dat het aan staat en binnen bereik is.",
-      "unknown": "Er is een onverwachte fout opgetreden."
+      "unknown": "Er is een onverwachte fout opgetreden.",
+      "device_already_initialized": "Apparaat is al geïnitialiseerd. Zet het eerst terug naar fabrieksinstellingen (verwijder de besturingsmodule, houd de aan/uit-knop 3 seconden ingedrukt tot de LED's knipperen).",
+      "init_failed": "Initialisatie van het apparaat is mislukt. Probeer het opnieuw."
     },
     "abort": {
       "already_configured": "Dit apparaat is al geconfigureerd.",
-      "no_devices_found": "Er zijn geen Petkit-fonteintjes gevonden."
+      "no_devices_found": "Er zijn geen Petkit-fonteintjes gevonden.",
+      "device_already_initialized": "Dit apparaat is al geïnitialiseerd met een geheim. Reset het apparaat eerst naar fabrieksinstellingen (verwijder de bedieningsmodule, houd de aan/uit-knop 3 seconden ingedrukt totdat de LED's knipperen) en probeer het opnieuw."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Petkit BLE opties",
+        "data": {
+          "debug": "Debug-logging inschakelen"
+        },
+        "data_description": {
+          "debug": "Log elk BLE-frame (TX/RX) en elke authenticatiestap. Handig voor het diagnosticeren van verbindingsproblemen. Schakel uit in productie."
+        }
+      }
     }
   },
   "options": {
@@ -48,7 +68,9 @@
       "energy_today": {"name": "Energieverbruik vandaag"},
       "filter_days_remaining": {"name": "Resterende filterdagen"},
       "firmware": {"name": "Firmware"},
-      "rssi": {"name": "Signaalsterkte"}
+      "hardware_version": {"name": "Hardwareversie"},
+      "rssi": {"name": "Signaalsterkte"},
+      "drink_count": {"name": "Drinkgebeurtenissen vandaag"}
     },
     "binary_sensor": {
       "pump_running": {"name": "Pomp actief"},
@@ -58,15 +80,38 @@
       "dnd_active": {"name": "Niet storen"},
       "pet_detected": {"name": "Huisdier drinkt"},
       "on_ac_power": {"name": "Netstroom"},
-      "low_battery": {"name": "Batterij bijna leeg"}
+      "low_battery": {"name": "Batterij bijna leeg"},
+      "suspended": {"name": "Pomp gepauzeerd"},
+      "uvc_active": {"name": "UVC-sterilisatie"}
     },
     "button": {
-      "reset_filter": {"name": "Filter resetten"},
-      "pump_on": {"name": "Pomp aan"},
-      "pump_off": {"name": "Pomp uit"}
+      "reset_filter": {"name": "Filter resetten"}
+    },
+    "number": {
+      "smart_work_minutes": {"name": "Smart-modus werktijd"},
+      "smart_sleep_minutes": {"name": "Smart-modus slaaptijd"},
+      "led_brightness": {"name": "LED-helderheid"}
+    },
+    "time": {
+      "led_on_time": {"name": "LED aan-tijd"},
+      "led_off_time": {"name": "LED uit-tijd"},
+      "dnd_start_time": {"name": "Niet storen starttijd"},
+      "dnd_end_time": {"name": "Niet storen eindtijd"}
+    },
+    "select": {
+      "mode": {
+        "name": "Modus",
+        "state": {
+          "normal": "Normaal",
+          "smart": "Smart"
+        }
+      }
     },
     "switch": {
-      "power": {"name": "Aan/Uit"}
+      "power": {"name": "Aan/Uit"},
+      "led": {"name": "LED"},
+      "do_not_disturb": {"name": "Niet storen"},
+      "child_lock": {"name": "Kinderslot"}
     }
   }
 }

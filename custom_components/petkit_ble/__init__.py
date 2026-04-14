@@ -19,7 +19,10 @@ PLATFORMS = [
     Platform.SENSOR,
     Platform.BINARY_SENSOR,
     Platform.BUTTON,
+    Platform.NUMBER,
+    Platform.SELECT,
     Platform.SWITCH,
+    Platform.TIME,
 ]
 
 _INTEGRATION_LOGGER = logging.getLogger(f"custom_components.{DOMAIN}")

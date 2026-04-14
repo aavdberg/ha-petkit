@@ -63,23 +63,21 @@ custom_components/petkit_ble/
 ```
 
 ### Authentication Sequence (every connection)
-1. **CMD 213** — request device ID
-2. **CMD 73** — request challenge bytes
-3. **CMD 86** — send computed secret; response[0] must equal `1` for success
+1. **CMD 213** — request device ID (big-endian for CMD 73 payload)
+2. **CMD 73** — register a fresh random 8-byte secret: `device_id_be + random_8_bytes`
+3. **CMD 86** — verify the same secret; response[0] must equal `1` for success
 4. **CMD 84** — set device time (Petkit epoch: 2000-01-01, offset = 946684800)
 
-### CTW3 Authentication Quirk (CRITICAL)
-Always use `[0]*6` as the `device_id` for secret computation, **regardless** of what
-CMD 213 returns. Using the actual CMD 213 bytes causes CMD 86 to fail and the device
-disconnects silently.
+**Why always full re-init (CMD 73 every connection):** CMD 86 returns `response[0]=1`
+("success") even with a stale or wrong secret — it is a false positive. The device only
+enters an authenticated session if CMD 73 was sent first in the current connection.
+Skipping CMD 73 causes CMD 200/210 to be silently ignored. Running CMD 73 on every
+connection makes the integration immune to the iOS app (or any other BLE client)
+resetting the device's auth state.
 
-### Secret Computation
-```python
-base = list(reversed([0]*6))          # always [0,0,0,0,0,0]
-if base[-2] == 0 and base[-1] == 0:
-    base[-2], base[-1] = 13, 37
-secret = [0] * (8 - len(base)) + base  # left-pad to 8 bytes
-```
+### CTW3 Authentication Note
+CMD 73 uses the device_id from CMD 213 converted to big-endian; followed by a new
+`secrets.token_bytes(8)` generated per connection. No fixed/hardcoded values needed.
 
 ### Key Commands
 | CMD | Direction | Purpose |
@@ -88,15 +86,17 @@ secret = [0] * (8 - len(base)) + base  # left-pad to 8 bytes
 | 73  | Read | Challenge bytes |
 | 86  | Write | Auth secret |
 | 84  | Write | Set device time |
-| 210 | Read | Device state (W4/W5/CTW2) |
-| 211 | Read | Device state (CTW3) |
-| 66  | Read | Firmware version |
-| 220 | Write | Power on/off |
+| 210 | Read | Device state (ALL devices; CTW3 returns 26 bytes, W4/W5/CTW2 return 12 bytes) |
+| 211 | Read | Device config (DND times, LED, smart-mode on/off duration) — CTW3 only |
+| 66  | Read | Battery / ADC voltage |
+| 200 | Read | Firmware + hardware version |
+| 220 | Write | Power on/off / mode |
 | 222 | Write | Reset filter |
 
 ### State Payload Layout
 - **W4/W5/CTW2** (CMD 210): 12+ bytes, big-endian
-- **CTW3** (CMD 211): 26+ bytes — has `suspend_status`, `electric_status`, `battery_level`, `detect_status`
+- **CTW3** (CMD 210): 26+ bytes — has `suspend_status`, `electric_status`, `battery_level`, `detect_status`
+  (CTW3 uses the **same CMD 210** as other devices, just with an extended 26-byte payload)
 
 ---
 
@@ -149,6 +149,22 @@ CTW3   → CTW3
 CTW2   → CTW2
 ```
 
+### Marketing Name ↔ BLE Name Mapping
+
+| BLE Advertisement Name | Product (marketing name) | Notes |
+|---|---|---|
+| `Petkit_CTW2_*` | Eversweet Solo 2 | Wireless, AC only, smaller |
+| `Petkit_CTW3_*` | Eversweet Max 2 (Cordless) | Wireless + AC, battery, 26-byte CMD 210 |
+| `Petkit_W5C_*` | Eversweet 3 Pro | AC only |
+| `Petkit_W5N_*` | Eversweet 3 | AC only |
+| `Petkit_W5_*` | Eversweet (original) | AC only |
+| `Petkit_W4X_*` | Eversweet W4X | AC only |
+| `Petkit_W4XUVC_*` | Eversweet W4X UVC | AC only, UV-C sterilisation |
+
+> **Note:** "CTW" is Petkit's internal hardware revision code, independent of the consumer
+> product name. The number in CTW2/CTW3 is a **hardware revision**, not a product generation.
+> Example: Eversweet Max 2 uses hardware revision CTW3; Eversweet Solo 2 uses CTW2.
+
 ---
 
 ## Branching Strategy
@@ -163,20 +179,43 @@ CTW2   → CTW2
 
 Both `main` and `dev` are protected: PRs required, ruff lint must pass.
 
-### ⚠️ CRITICAL RULE — Always follow this workflow:
-```
-git checkout dev && git pull
-git checkout -b fix/my-fix          # or feature/, chore/
-# make changes
-git add ... && git commit -m "fix: ..."
-git push -u origin fix/my-fix
-gh pr create --base dev --head fix/my-fix --title "..." --body "..."
-# wait for CI to pass, then merge
-```
+### ⚠️ CRITICAL RULE — Mandatory workflow for every change:
+
+Every change — no matter how small — **must** follow these steps in order:
+
+1. **Plan** — Analyse the problem, explore the codebase, and create a clear plan
+   (what will change, which files, why). Save the plan to `plan.md`.
+2. **Confirm** — Present the plan to the user and **ask for approval** before writing
+   any code. Do **not** proceed until the user confirms.
+3. **Issue** — Create a GitHub Issue describing the change (bug report, feature request,
+   or chore). Reference any related issues/PRs.
+4. **Branch** — Create a branch from `dev` following the naming convention:
+   ```
+   git checkout dev && git pull
+   git checkout -b fix/my-fix          # or feature/, chore/
+   ```
+5. **Implement** — Make the code changes, run linter (`ruff check custom_components/` + `ruff format --check custom_components/`)
+   and tests (`python -m pytest tests/ -v`), and commit with Conventional Commits.
+6. **Push & PR** — Push the branch and open a Pull Request targeting `dev`:
+   ```
+   git push -u origin fix/my-fix
+   gh pr create --base dev --head fix/my-fix --title "..." --body "..."
+   ```
+7. **CI** — Wait for all CI checks to pass (ruff lint, ruff format, HACS validation).
+8. **Review** — After CI passes, check the Copilot code review on the PR:
+   - Retrieve all review comments using the GitHub API / `gh` CLI.
+   - If there are comments or suggestions, **fix them** in a new commit on the same branch.
+   - Reply to each review thread explaining what was fixed.
+   - **Resolve** all review threads (using GraphQL `resolveReviewThread` mutation).
+   - Push the fixes and wait for CI to pass again.
+   - Repeat until there are no unresolved comments.
+9. **Merge** — Once CI passes and all review comments are resolved, merge the PR into `dev`:
+   ```
+   gh pr merge <PR_NUMBER> --squash --delete-branch
+   ```
 
 **NEVER commit or push directly to `dev` or `main`.**  
 Even as admin (bypassed protection), direct pushes skip CI and break the audit trail.
-Every change — no matter how small — must go through a PR to `dev`.
 
 ---
 

@@ -7,7 +7,6 @@ import contextlib
 import logging
 import math
 import struct
-import time
 from dataclasses import dataclass
 
 from bleak import BleakClient
@@ -18,8 +17,8 @@ from .const import (
     AUTH_STEP_DELAY,
     BLE_NOTIFY_UUID,
     BLE_WRITE_UUID,
-    CMD_AUTH_INIT,
     CMD_AUTH_VERIFY,
+    CMD_DEVICE_INIT,
     CMD_GET_BATTERY,
     CMD_GET_CONFIG,
     CMD_GET_DEVICE_INFO,
@@ -37,10 +36,10 @@ from .const import (
     FRAME_END,
     FRAME_HEADER,
     FRAME_TYPE_SEND,
-    PETKIT_EPOCH_OFFSET,
+    GATT_SERIAL_NUMBER_UUID,
     POWER_COEFF_W,
-    ZERO_DEVICE_ID_MODELS,
 )
+from .protocol import build_init_payload, build_time_sync_payload
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -51,6 +50,7 @@ class PetkitFountainData:
 
     alias: str = ""
     firmware: str = ""
+    hardware_version: str = ""
     rssi: int | None = None
 
     # Power & mode (CMD 210)
@@ -89,9 +89,26 @@ class PetkitFountainData:
     do_not_disturb_switch: int = 0
     is_locked: int = 0
 
-    # CMD 66 battery (for non-CTW3)
+    # DND schedule (from CMD 211 or CMD 216)
+    dnd_start_minutes: int = 0  # minutes from midnight
+    dnd_end_minutes: int = 0
+
+    # LED schedule (from CMD 211 or CMD 215)
+    led_on_minutes: int = 0  # minutes from midnight
+    led_off_minutes: int = 0
+
+    # Drink statistics
+    drink_event_count: int = 0
+
+    # CMD 66 battery (raw ADC voltage, little-endian, for non-CTW3)
     battery_voltage_mv_66: int = 0
-    battery_percent_66: int = 0
+
+    # GATT Device Information Service
+    serial_number: str = ""
+
+    # CTW3 battery working/sleep times (for settings write-back)
+    battery_work_time: int = 0
+    battery_sleep_time: int = 0
 
     @property
     def is_ctw3(self) -> bool:
@@ -107,10 +124,11 @@ class PetkitFountainData:
     def filter_days_remaining(self) -> int:
         """Estimate remaining filter life in days."""
         if self.mode == 1:
-            time_on, time_off = 1, 0
-        else:
-            time_on, time_off = self.smart_time_on, self.smart_time_off
+            # Normal mode: pump runs continuously, filter lasts 60 days at 100%
+            return math.ceil(self.filter_percent / 100 * FILTER_LIFE_NORMAL_DAYS)
 
+        # Smart mode: adjust by duty cycle
+        time_on, time_off = self.smart_time_on, self.smart_time_off
         if time_on == 0:
             return math.ceil(self.filter_percent / 100 * FILTER_LIFE_NORMAL_DAYS)
         return math.ceil(((self.filter_percent / 100 * FILTER_LIFE_SMART_DAYS) * (time_on + time_off)) / time_on)
@@ -137,8 +155,7 @@ class PetkitBleClient:
         self._device = ble_device
         self._client: BleakClient | None = None
         self._rx_buf: bytearray = bytearray()
-        self._rx_event: asyncio.Event = asyncio.Event()
-        self._last_response: bytes | None = None
+        self._rx_queue: asyncio.Queue[bytes] = asyncio.Queue()
         self._seq: int = 0
 
     # ------------------------------------------------------------------
@@ -189,9 +206,8 @@ class PetkitBleClient:
         # Total frame = header(3) + meta(5) + payload(data_len) + end(1)
         expected_len = 8 + data_len + 1
         if len(self._rx_buf) >= expected_len and self._rx_buf[expected_len - 1] == FRAME_END:
-            self._last_response = bytes(self._rx_buf[:expected_len])
+            self._rx_queue.put_nowait(bytes(self._rx_buf[:expected_len]))
             del self._rx_buf[:expected_len]
-            self._rx_event.set()
 
     # ------------------------------------------------------------------
     # Low-level send/receive
@@ -204,30 +220,42 @@ class PetkitBleClient:
         data: list[int],
         timeout: float = 5.0,
     ) -> bytes | None:
-        """Send a command frame and wait for the matching response."""
+        """Send a command frame and wait for the matching response.
+
+        Unsolicited notifications with a different cmd byte (e.g. CTW3 CMD 230
+        extended state pushes) are discarded while waiting for the expected reply.
+        """
         assert self._client is not None
         seq = self._next_seq()
         frame = self._build_frame(cmd, type_, seq, data)
-        self._rx_event.clear()
-        self._last_response = None
         await self._client.write_gatt_char(BLE_WRITE_UUID, frame, response=False)
         _LOGGER.debug("TX CMD %d: %s", cmd, frame.hex())
-        try:
-            await asyncio.wait_for(self._rx_event.wait(), timeout)
-        except TimeoutError:
-            _LOGGER.warning("Timeout waiting for response to CMD %d", cmd)
-            return None
-
-        raw = self._last_response
-        if raw is None:
-            return None
-        _LOGGER.debug("RX CMD %d: %s", cmd, raw.hex())
-        parsed = self._parse_frame(raw)
-        if parsed is None:
-            _LOGGER.debug("Could not parse response frame for CMD %d: %s", cmd, raw.hex())
-            return None
-        _resp_cmd, _resp_type, _resp_seq, payload = parsed
-        return payload
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + timeout
+        while True:
+            remaining = deadline - loop.time()
+            if remaining <= 0:
+                _LOGGER.warning("Timeout waiting for response to CMD %d", cmd)
+                return None
+            try:
+                raw = await asyncio.wait_for(self._rx_queue.get(), remaining)
+            except TimeoutError:
+                _LOGGER.warning("Timeout waiting for response to CMD %d", cmd)
+                return None
+            parsed = self._parse_frame(raw)
+            if parsed is None:
+                _LOGGER.debug("Could not parse frame while waiting for CMD %d: %s", cmd, raw.hex())
+                continue
+            resp_cmd, _resp_type, _resp_seq, payload = parsed
+            if resp_cmd != cmd:
+                _LOGGER.debug(
+                    "Discarding unsolicited CMD %d notification while waiting for CMD %d",
+                    resp_cmd,
+                    cmd,
+                )
+                continue
+            _LOGGER.debug("RX CMD %d: %s", cmd, raw.hex())
+            return payload
 
     # ------------------------------------------------------------------
     # Connection helpers
@@ -242,6 +270,9 @@ class PetkitBleClient:
         )
         await self._client.start_notify(BLE_NOTIFY_UUID, self._on_notify)
         self._rx_buf.clear()
+        # Discard any stale notifications from a previous connection
+        while not self._rx_queue.empty():
+            self._rx_queue.get_nowait()
         self._seq = 0
         # Allow device time to settle before sending first command
         await asyncio.sleep(0.5)
@@ -260,63 +291,33 @@ class PetkitBleClient:
     # Authentication sequence
     # ------------------------------------------------------------------
 
-    async def _authenticate(self, alias: str) -> None:
-        """Run the full 5-step Petkit authentication sequence."""
-        # Step 1: CMD 213 — get device id & serial
-        payload_213 = await self._send_and_wait(CMD_GET_DEVICE_INFO, FRAME_TYPE_SEND, [0, 0])
+    async def _authenticate(self, alias: str, secret: bytes | None = None) -> None:
+        """Run Petkit auth: CMD 213 → CMD 86 with stored secret → CMD 84.
+
+        Uses the stored secret from config_entry.data (set during device init).
+        CMD 73 is NOT sent here — it is only used during initial device setup.
+        """
+        # CMD 213 — get device info
+        payload_213 = await self._send_and_wait(CMD_GET_DEVICE_INFO, FRAME_TYPE_SEND, [])
         if payload_213 is None or len(payload_213) < 8:
-            _LOGGER.error(
-                "CMD 213 failed or response too short (got %d bytes): %s",
-                len(payload_213) if payload_213 is not None else 0,
-                payload_213.hex() if payload_213 is not None else "None",
-            )
-            raise RuntimeError("CMD 213 failed or response too short")
-
-        device_id_bytes = list(payload_213[2:8])
-        # serial = payload_213[8:23]  # available if needed
-
-        # Step 2: Compute secret
-        # CTW3 always uses all-zero device_id for secret computation
-        secret_source = [0] * 6 if alias in ZERO_DEVICE_ID_MODELS else device_id_bytes
-
-        secret = list(reversed(secret_source))
-        if secret[-1] == 0 and secret[-2] == 0:
-            secret[-2] = 13
-            secret[-1] = 37
-        # Pad left to 8 bytes
-        secret = [*([0] * (8 - len(secret))), *secret]
-
-        # device_id padded to 8 bytes (left-pad with zeros)
-        device_id_padded = [*([0] * (8 - len(device_id_bytes))), *device_id_bytes]
+            byte_count = len(payload_213) if payload_213 is not None else 0
+            raise RuntimeError(f"CMD 213 failed or response too short (got {byte_count} bytes)")
 
         await asyncio.sleep(AUTH_STEP_DELAY)
 
-        # Step 3: CMD 73
-        await self._send_and_wait(
-            CMD_AUTH_INIT,
-            FRAME_TYPE_SEND,
-            [0, 0, *device_id_padded, *secret],
-        )
-        await asyncio.sleep(AUTH_STEP_DELAY)
-
-        # Step 4: CMD 86 — verify auth; response[0]==1 means success
-        payload_86 = await self._send_and_wait(CMD_AUTH_VERIFY, FRAME_TYPE_SEND, [0, 0, *secret])
+        # CMD 86 — verify with stored secret
+        if secret is None:
+            secret = bytes(8)  # zero secret for uninitialized devices
+        payload_86 = await self._send_and_wait(CMD_AUTH_VERIFY, FRAME_TYPE_SEND, list(secret[:8]))
         await asyncio.sleep(AUTH_STEP_DELAY)
         if payload_86 is None or len(payload_86) == 0 or payload_86[0] != 1:
-            raise RuntimeError(
-                "Authentication failed (CMD 86 response: %s)" % (payload_86.hex() if payload_86 else "None")
-            )
+            resp_hex = payload_86.hex() if payload_86 else "None"
+            raise RuntimeError(f"Authentication failed (CMD 86 response: {resp_hex})")
 
-        # Step 5: CMD 84 — set device time
-        sec = int(time.time()) - PETKIT_EPOCH_OFFSET
-        time_bytes = [
-            0,
-            (sec >> 24) & 0xFF,
-            (sec >> 16) & 0xFF,
-            (sec >> 8) & 0xFF,
-            sec & 0xFF,
-            13,
-        ]
+        _LOGGER.debug("Authentication complete for %s", alias)
+
+        # CMD 84 — set device time
+        time_bytes = build_time_sync_payload()
         await self._send_and_wait(CMD_SET_TIME, FRAME_TYPE_SEND, time_bytes)
         await asyncio.sleep(AUTH_STEP_DELAY)
 
@@ -378,7 +379,8 @@ class PetkitBleClient:
             return
         data.smart_time_on = payload[0]
         data.smart_time_off = payload[1]
-        # payload[2:4] battery_working_time, payload[4:6] battery_sleep_time — informational
+        data.battery_work_time = struct.unpack_from(">H", payload, 2)[0]
+        data.battery_sleep_time = struct.unpack_from(">H", payload, 4)[0]
         data.led_switch = payload[6]
         data.led_brightness = payload[7]
         data.do_not_disturb_switch = payload[8]
@@ -387,23 +389,65 @@ class PetkitBleClient:
 
     @staticmethod
     def _parse_config_generic(data: PetkitFountainData, payload: bytes) -> None:
-        """Parse CMD 211 response for W4/W5/CTW2."""
+        """Parse CMD 211 response for W5/CTW2."""
         if len(payload) < 9:
             return
         data.smart_time_on = payload[0]
         data.smart_time_off = payload[1]
         data.led_switch = payload[2]
         data.led_brightness = payload[3]
-        # payload[4:6] led_light_time_on, [6:8] led_light_time_off — informational
+        if len(payload) >= 8:
+            data.led_on_minutes = struct.unpack_from(">H", payload, 4)[0]
+            data.led_off_minutes = struct.unpack_from(">H", payload, 6)[0]
         data.do_not_disturb_switch = payload[8]
+        if len(payload) >= 13:
+            data.dnd_start_minutes = struct.unpack_from(">H", payload, 9)[0]
+            data.dnd_end_minutes = struct.unpack_from(">H", payload, 11)[0]
         if len(payload) >= 14:
             data.is_locked = payload[13]
+
+    # ------------------------------------------------------------------
+    # Device initialization (first-time setup only)
+    # ------------------------------------------------------------------
+
+    async def async_check_initialized(self) -> tuple[bool, int]:
+        """Connect, read device ID, return (initialized, device_id).
+
+        A device_id of 0 means uninitialized.
+        """
+        try:
+            await self._connect()
+            payload = await self._send_and_wait(CMD_GET_DEVICE_INFO, FRAME_TYPE_SEND, [])
+            if payload is None or len(payload) < 8:
+                return False, 0
+            device_id = int.from_bytes(payload[:8], "little")
+            return device_id != 0, device_id
+        finally:
+            await self.disconnect()
+
+    async def async_init_device(self, device_id: int, secret: bytes) -> bool:
+        """Connect, initialize device with CMD 73, verify with CMD 86, disconnect.
+
+        Returns True on success.
+        """
+        try:
+            await self._connect()
+            payload = build_init_payload(device_id, secret)
+            resp = await self._send_and_wait(CMD_DEVICE_INIT, FRAME_TYPE_SEND, payload)
+            if resp is None or len(resp) == 0 or resp[0] != 1:
+                return False
+            # Verify with CMD 86
+            await asyncio.sleep(AUTH_STEP_DELAY)
+            payload_86 = await self._send_and_wait(CMD_AUTH_VERIFY, FRAME_TYPE_SEND, list(secret[:8]))
+            return payload_86 is not None and len(payload_86) > 0 and payload_86[0] == 1
+        finally:
+            await self.disconnect()
 
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
 
-    async def async_poll(self, alias: str) -> PetkitFountainData:
+    async def async_poll(self, alias: str, secret: bytes | None = None) -> PetkitFountainData:
         """Connect, authenticate, poll all state commands, disconnect.
 
         Returns a fully-populated PetkitFountainData instance.
@@ -411,35 +455,49 @@ class PetkitBleClient:
         data = PetkitFountainData(alias=alias)
         try:
             await self._connect()
-            await self._authenticate(alias)
+            await self._authenticate(alias, secret)
 
-            # CMD 200 — firmware version: byte[0]=hardware, byte[1]=firmware
+            # CMD 200 — firmware version: byte[0]=hardware revision, byte[1]=firmware version
             payload_200 = await self._send_and_wait(CMD_GET_FIRMWARE, FRAME_TYPE_SEND, [])
             if payload_200 is not None and len(payload_200) >= 2:
-                data.firmware = f"{payload_200[0]}.{payload_200[1]}"
-                _LOGGER.debug("CMD 200 firmware payload: %s → %s", payload_200.hex(), data.firmware)
+                data.hardware_version = str(payload_200[0])
+                data.firmware = str(payload_200[1])
+                _LOGGER.debug(
+                    "CMD 200 firmware payload: %s → hw=%s fw=%s",
+                    payload_200.hex(),
+                    data.hardware_version,
+                    data.firmware,
+                )
 
             # CMD 210 — device state
-            payload_210 = await self._send_and_wait(CMD_GET_STATE, FRAME_TYPE_SEND, [0, 0])
+            payload_210 = await self._send_and_wait(CMD_GET_STATE, FRAME_TYPE_SEND, [])
             if payload_210 is not None:
                 if alias in CTW3_ALIASES:
                     self._parse_state_ctw3(data, payload_210)
                 else:
                     self._parse_state_generic(data, payload_210)
 
-            # CMD 211 — device config
-            payload_211 = await self._send_and_wait(CMD_GET_CONFIG, FRAME_TYPE_SEND, [0, 0])
+            # CMD 211 — device config (settings)
+            payload_211 = await self._send_and_wait(CMD_GET_CONFIG, FRAME_TYPE_SEND, [])
             if payload_211 is not None:
                 if alias in CTW3_ALIASES:
                     self._parse_config_ctw3(data, payload_211)
                 else:
                     self._parse_config_generic(data, payload_211)
 
-            # CMD 66 — battery (mainly for non-CTW3)
+            # CMD 66 — raw ADC voltage (2 bytes little-endian per protocol spec)
             payload_66 = await self._send_and_wait(CMD_GET_BATTERY, FRAME_TYPE_SEND, [0, 0])
-            if payload_66 is not None and len(payload_66) >= 3:
-                data.battery_voltage_mv_66 = payload_66[0] * 256 + (payload_66[1] & 0xFF)
-                data.battery_percent_66 = payload_66[2]
+            if payload_66 is not None and len(payload_66) >= 2:
+                data.battery_voltage_mv_66 = payload_66[0] + payload_66[1] * 256
+
+            # GATT Device Information Service — serial number (standard BLE).
+            # Read AFTER all Petkit commands: some devices disconnect when unsupported
+            # GATT characteristics are accessed before the application-level auth completes.
+            assert self._client is not None
+            with contextlib.suppress(Exception):
+                sn_bytes = await self._client.read_gatt_char(GATT_SERIAL_NUMBER_UUID)
+                data.serial_number = sn_bytes.decode("utf-8", errors="ignore").strip()
+                _LOGGER.debug("Serial number: %s", data.serial_number)
 
         finally:
             await self.disconnect()
@@ -451,6 +509,7 @@ class PetkitBleClient:
         cmd: int,
         data: list[int],
         alias: str,
+        secret: bytes | None = None,
     ) -> bool:
         """Connect, authenticate, send a single command, disconnect.
 
@@ -458,7 +517,7 @@ class PetkitBleClient:
         """
         try:
             await self._connect()
-            await self._authenticate(alias)
+            await self._authenticate(alias, secret)
             await self._send_and_wait(cmd, FRAME_TYPE_SEND, data)
         except Exception:
             _LOGGER.exception("Error sending CMD %d", cmd)
