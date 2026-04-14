@@ -152,6 +152,8 @@ def build_ctw3_mode_payload(power: int, suspend: int, mode: int) -> list[int]:
     The suspend byte controls pump activation:
       - 1 = pump active (required for normal mode to run)
       - 0 = timer-managed (smart mode handles its own cycling)
-    When powering off, suspend should be 0.
+    When powering off, suspend is always forced to 0.
     """
+    if power == 0:
+        suspend = 0
     return [power, suspend, mode]
