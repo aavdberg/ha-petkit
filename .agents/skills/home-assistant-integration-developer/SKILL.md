@@ -164,7 +164,7 @@ See `references/entity-guide.md`. Key rules:
 | `TOTAL_INCREASING` for in-memory counter | `MEASUREMENT` or persist with `RestoreEntity` | Resets on restart look like counter decreases | `references/entity-guide.md` |
 | `struct.pack(">q", id)` for unsigned IDs | `struct.pack(">Q", id)` (unsigned) | High-bit IDs raise `struct.error` with signed | `references/code-quality.md` |
 | Config entry without `async_set_unique_id` | Always set unique ID first | Prevents duplicate entries | `references/config-flow-guide.md` |
-| Secrets in source code | `config_entry.data[CONF_SECRET]` | Secrets must be stored encrypted in config | `references/config-flow-guide.md` |
+| Secrets in source code | `config_entry.data[CONF_SECRET]` | Store secrets in config entry storage, not hardcoded in the integration | `references/config-flow-guide.md` |
 | `bytes.fromhex()` without try/except | Wrap in try/except ValueError | Corrupted config data crashes integration | `references/coordinator-guide.md` |
 
 ---
