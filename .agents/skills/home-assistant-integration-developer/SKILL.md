@@ -38,7 +38,7 @@ metadata:
 
 # Home Assistant Integration Developer
 
-**Core principle:** Follow Home Assistant's native patterns — `DataUpdateCoordinator` for data fetching, `entry.runtime_data` for state, `CoordinatorEntity` for entities, frozen dataclass descriptions for entity metadata, and `strings.json` for all user-visible text.
+**Core principle:** Follow Home Assistant's native patterns — `DataUpdateCoordinator` for data fetching, `entry.runtime_data` for state, `CoordinatorEntity` for entities, frozen dataclass descriptions for entity metadata, and the repository's current translation layout: use `strings.json` for config/options flow text and `translations/en.json` (mirrored to other `translations/*.json` files) for entity and other user-visible platform strings.
 
 ## Decision Workflow
 
