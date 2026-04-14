@@ -148,5 +148,10 @@ def build_ctw3_mode_payload(power: int, suspend: int, mode: int) -> list[int]:
     """Build the payload for CMD 220 (change mode) for CTW3 devices.
 
     Layout: [power, suspend, mode]
+
+    The suspend byte controls pump activation:
+      - 1 = pump active (required for normal mode to run)
+      - 0 = timer-managed (smart mode handles its own cycling)
+    When powering off, suspend should be 0.
     """
     return [power, suspend, mode]

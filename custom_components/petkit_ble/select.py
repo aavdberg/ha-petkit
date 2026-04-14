@@ -61,9 +61,12 @@ class PetkitModeSelect(PetkitBleEntity, SelectEntity):
         data = self.coordinator.data
 
         if data is not None and data.is_ctw3:
-            # CTW3: [power, suspend_status=0, mode]
+            # CTW3: [power, suspend, mode]
+            # suspend=1 activates the pump (normal mode); suspend=0 lets the
+            # device's internal timer manage cycling (smart mode).
             power = data.power_status if data.power_status in (0, 1) else 1
-            payload = [power, 0, mode_int]
+            suspend = 1 if mode_int == 1 and power == 1 else 0
+            payload = [power, suspend, mode_int]
         else:
             # Generic W5/CTW2: byte[0] = mode (1=normal, 2=smart); selecting a mode implies power-on
             payload = [mode_int, 0]

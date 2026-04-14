@@ -70,9 +70,12 @@ class PetkitPowerSwitch(PetkitBleEntity, SwitchEntity):
         data = self.coordinator.data
 
         if data is not None and data.is_ctw3:
-            # CTW3: [power, suspend_status=0, mode]
+            # CTW3: [power, suspend, mode]
+            # suspend=1 activates the pump (normal mode); suspend=0 lets the
+            # device's internal timer manage cycling (smart mode).
             raw_mode = data.mode if data.mode in (1, 2) else 1
-            payload = [power_state, 0, raw_mode]
+            suspend = power_state if raw_mode == 1 else 0
+            payload = [power_state, suspend, raw_mode]
         else:
             # Generic W5/CTW2: byte[0] encodes power+mode (0=off, 1=normal, 2=smart)
             if power_state == 0:
