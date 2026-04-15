@@ -44,19 +44,6 @@
       }
     }
   },
-  "options": {
-    "step": {
-      "init": {
-        "title": "Параметри Petkit BLE",
-        "data": {
-          "debug": "Увімкнути журналювання налагодження"
-        },
-        "data_description": {
-          "debug": "Записувати кожен BLE-кадр (TX/RX) та крок автентифікації. Корисно для діагностики проблем із підключенням. Вимкніть у виробничому середовищі."
-        }
-      }
-    }
-  },
   "entity": {
     "sensor": {
       "filter_percent": {"name": "Ресурс фільтра"},
@@ -90,7 +77,9 @@
     "number": {
       "smart_work_minutes": {"name": "Час роботи смарт-режиму"},
       "smart_sleep_minutes": {"name": "Час сну смарт-режиму"},
-      "led_brightness": {"name": "Яскравість LED"}
+      "led_brightness": {"name": "Яскравість LED"},
+      "battery_work_seconds": {"name": "Тривалість роботи від батареї"},
+      "battery_sleep_seconds": {"name": "Тривалість сну від батареї"}
     },
     "time": {
       "led_on_time": {"name": "Час увімкнення LED"},

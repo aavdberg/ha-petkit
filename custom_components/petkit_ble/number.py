@@ -1,4 +1,4 @@
-"""Number platform for Petkit BLE (smart mode timers and LED brightness)."""
+"""Number platform for Petkit BLE (smart mode timers, LED brightness, battery intervals)."""
 
 from __future__ import annotations
 
@@ -24,6 +24,7 @@ class PetkitNumberDescription(NumberEntityDescription):
     """Number description with value extractor and setter field name."""
 
     value_fn: Callable[[PetkitFountainData], float | None]
+    available_fn: Callable[[PetkitFountainData], bool] = lambda _: True
     field_name: str
 
 
@@ -58,6 +59,28 @@ NUMBER_DESCRIPTIONS: tuple[PetkitNumberDescription, ...] = (
         value_fn=lambda d: d.led_brightness,
         field_name="led_brightness",
     ),
+    PetkitNumberDescription(
+        key="battery_work_seconds",
+        translation_key="battery_work_seconds",
+        native_min_value=1,
+        native_max_value=3600,
+        native_step=1,
+        mode=NumberMode.BOX,
+        value_fn=lambda d: d.battery_work_time,
+        available_fn=lambda d: d.is_ctw3,
+        field_name="battery_work_time",
+    ),
+    PetkitNumberDescription(
+        key="battery_sleep_seconds",
+        translation_key="battery_sleep_seconds",
+        native_min_value=1,
+        native_max_value=7200,
+        native_step=1,
+        mode=NumberMode.BOX,
+        value_fn=lambda d: d.battery_sleep_time,
+        available_fn=lambda d: d.is_ctw3,
+        field_name="battery_sleep_time",
+    ),
 )
 
 
@@ -84,6 +107,13 @@ class PetkitBleNumber(PetkitBleEntity, NumberEntity):
         """Initialise the number entity."""
         super().__init__(coordinator, description.key)
         self.entity_description = description
+
+    @property
+    def available(self) -> bool:
+        """Return True only when data is present and the device supports this entity."""
+        if not super().available:
+            return False
+        return self.entity_description.available_fn(self.coordinator.data)
 
     @property
     def native_value(self) -> float | None:
