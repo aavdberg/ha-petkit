@@ -44,19 +44,6 @@
       }
     }
   },
-  "options": {
-    "step": {
-      "init": {
-        "title": "Petkit BLE Options",
-        "data": {
-          "debug": "Enable debug logging"
-        },
-        "data_description": {
-          "debug": "Log every BLE frame (TX/RX) and authentication step. Useful for diagnosing connection issues. Disable in production."
-        }
-      }
-    }
-  },
   "entity": {
     "sensor": {
       "filter_percent": {"name": "Filter Life"},
@@ -90,7 +77,9 @@
     "number": {
       "smart_work_minutes": {"name": "Smart Mode Work Time"},
       "smart_sleep_minutes": {"name": "Smart Mode Sleep Time"},
-      "led_brightness": {"name": "LED Brightness"}
+      "led_brightness": {"name": "LED Brightness"},
+      "battery_work_seconds": {"name": "Battery Work Duration"},
+      "battery_sleep_seconds": {"name": "Battery Sleep Duration"}
     },
     "time": {
       "led_on_time": {"name": "LED On Time"},

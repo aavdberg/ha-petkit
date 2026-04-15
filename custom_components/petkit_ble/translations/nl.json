@@ -44,19 +44,6 @@
       }
     }
   },
-  "options": {
-    "step": {
-      "init": {
-        "title": "Petkit BLE opties",
-        "data": {
-          "debug": "Debug-logging inschakelen"
-        },
-        "data_description": {
-          "debug": "Log elk BLE-frame (TX/RX) en elke authenticatiestap. Handig voor het diagnosticeren van verbindingsproblemen. Schakel uit in productie."
-        }
-      }
-    }
-  },
   "entity": {
     "sensor": {
       "filter_percent": {"name": "Filterlevensduur"},
@@ -90,7 +77,9 @@
     "number": {
       "smart_work_minutes": {"name": "Smart-modus werktijd"},
       "smart_sleep_minutes": {"name": "Smart-modus slaaptijd"},
-      "led_brightness": {"name": "LED-helderheid"}
+      "led_brightness": {"name": "LED-helderheid"},
+      "battery_work_seconds": {"name": "Batterij werkduur"},
+      "battery_sleep_seconds": {"name": "Batterij slaaptijd"}
     },
     "time": {
       "led_on_time": {"name": "LED aan-tijd"},
