@@ -16,21 +16,10 @@ description: >
   - Implementing device commands (write-back) through coordinator
   - Structuring __init__.py setup/unload with runtime_data pattern
 
-  SYMPTOMS:
-  - Agent creates entities in __init__.py instead of platform files
-  - Agent uses hass.data[DOMAIN] instead of entry.runtime_data pattern
-  - Agent does network I/O in entity properties instead of coordinator
-  - Agent skips DataUpdateCoordinator and polls directly from entities
-  - Agent uses device_id instead of entity_id in entity unique IDs
-  - Agent forgets from __future__ import annotations or type hints
-  - Agent imports Callable from typing instead of collections.abc
-  - Agent duplicates payload-building logic across multiple platform files
-  - Agent uses mutable state in entity description dataclasses (missing frozen=True)
-  - Agent stores secrets in code instead of config entry data
-  - Agent skips translation_key and hardcodes entity names
-  - Agent catches bare Exception without re-raising as UpdateFailed
-  - Agent creates config entries without calling async_set_unique_id first
-  - Agent accesses private fields (_underscore) across module boundaries
+  SYMPTOMS: Agent creates entities in __init__.py instead of platform files, uses hass.data[DOMAIN]
+  instead of entry.runtime_data, does I/O in entity properties, skips coordinator, misuses unique IDs,
+  forgets type hints or from __future__ import annotations, imports Callable from typing, hardcodes
+  entity names instead of using translation_key, catches bare Exception without UpdateFailed.
 
 metadata:
   version: 1
