@@ -172,6 +172,14 @@ views:
               - entity: time.petkit_ctw3_100_dnd_end_time
                 name: DND End
 
+          - type: entities
+            title: Battery Mode Interval
+            entities:
+              - entity: number.petkit_ctw3_100_battery_work_seconds
+                name: Work Duration (sec)
+              - entity: number.petkit_ctw3_100_battery_sleep_seconds
+                name: Sleep Duration (sec)
+
       # ── Device Info ──────────────────────────────────────────────────
       - title: Device Info
         type: grid
