@@ -341,11 +341,12 @@ class PetkitBleClient:
         data.power_status = payload[0]
         data.suspend_status = payload[1]
         # The CTW3 firmware has been observed to transiently report mode=0 during
-        # the smart-mode sleep phase. Treating that as ground truth makes the
-        # mode select fall back to "normal" (see select.py) and any subsequent
-        # power-switch toggle then sends the wrong CMD 220 payload, kicking the
-        # device out of smart mode. We therefore only update ``mode`` when the
-        # new value is a known mode (1=normal, 2=smart). See issue #57.
+        # the smart-mode sleep phase. Treating that as ground truth would make
+        # the mode select show "Unknown" (it returns None for unknown values)
+        # and any subsequent power-switch toggle would read data.mode == 0/1,
+        # sending the wrong CMD 220 payload and kicking the device out of smart
+        # mode. We therefore only update ``mode`` when the new value is a known
+        # mode (1=normal, 2=smart). See issue #57.
         new_mode = payload[2]
         if new_mode in (1, 2):
             data.mode = new_mode
