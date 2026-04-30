@@ -221,7 +221,7 @@ Even as admin (bypassed protection), direct pushes skip CI and break the audit t
 
 ## Code Conventions
 
-- **Language**: All code comments, docstrings, commit messages, and documentation in **English**.
+- **Language**: All code, comments, docstrings, commit messages, PR titles & descriptions, and GitHub issues MUST be in **English**. This applies even when the user/contributor communicates in another language — only the chat reply to the user may be in their language; everything that lands in the repository or on GitHub is English.
 - **Python**: 3.12+, type hints required, `from __future__ import annotations` in every module.
 - **Imports**: Use `from collections.abc import Callable` (not `from typing import Callable`).
 - **Linter**: ruff — run `ruff check custom_components/` before committing.
