@@ -11,7 +11,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import CMD_SET_POWER_MODE
 from .coordinator import PetkitBleCoordinator
 from .entity import PetkitBleEntity
-from .protocol import build_change_mode_payload, build_ctw3_mode_payload
+from .protocol import build_change_mode_payload, build_ctw3_select_mode_payload
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -62,16 +62,21 @@ class PetkitModeSelect(PetkitBleEntity, SelectEntity):
         data = self.coordinator.data
 
         if data is not None and data.is_ctw3:
-            # CTW3: [power, suspend, mode] via protocol helper.
-            # suspend=1 activates the pump (normal mode); suspend=0 lets the
-            # device's internal timer manage cycling (smart mode).
-            power = data.power_status if data.power_status in (0, 1) else 1
-            suspend = 1 if mode_int == 1 and power == 1 else 0
-            payload = build_ctw3_mode_payload(power, suspend, mode_int)
+            # CTW3: payload [power, suspend, mode] is built by a dedicated
+            # helper that always forces power=1, because selecting a mode in
+            # HA implies the user wants that mode to run. See
+            # build_ctw3_select_mode_payload for the rationale.
+            payload = build_ctw3_select_mode_payload(mode_int)
         else:
             # Generic W5/CTW2: byte[0] = mode (1=normal, 2=smart); selecting a mode implies power-on
             payload = build_change_mode_payload(mode_int)
 
+        _LOGGER.info(
+            "Mode select -> %s (alias=%s): sending CMD 220 payload=%s",
+            option,
+            data.alias if data is not None else "unknown",
+            payload,
+        )
         success = await self.coordinator.async_send_command(CMD_SET_POWER_MODE, payload)
         if success:
             await self.coordinator.async_request_refresh()

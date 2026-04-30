@@ -157,3 +157,21 @@ def build_ctw3_mode_payload(power: int, suspend: int, mode: int) -> list[int]:
     if power == 0:
         suspend = 0
     return [power, suspend, mode]
+
+
+def build_ctw3_select_mode_payload(mode: int) -> list[int]:
+    """Build a CMD 220 payload for a user mode-select on CTW3.
+
+    Selecting a mode in the HA UI always implies power=1: the user expects
+    that mode to *run*. We deliberately ignore the cached ``power_status``
+    here because byte[0] of CMD 210 can momentarily be reported as 0 while
+    the device is in smart-mode sleep cycle. Coupling the mode select to
+    that cached value caused Smart→Normal to silently send [0, 0, 1] and
+    leave the pump off.
+
+    Returns:
+      - Normal (mode=1): [1, 1, 1]  (power on, pump active)
+      - Smart  (mode=2): [1, 0, 2]  (power on, timer-managed)
+    """
+    suspend = 1 if mode == 1 else 0
+    return build_ctw3_mode_payload(1, suspend, mode)
