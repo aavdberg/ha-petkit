@@ -46,10 +46,17 @@ class PetkitModeSelect(PetkitBleEntity, SelectEntity):
 
     @property
     def current_option(self) -> str | None:
-        """Return the current mode as an option string."""
+        """Return the current mode as an option string.
+
+        If the device reports an unknown mode value (e.g. ``0`` during the
+        CTW3 smart-mode sleep phase) the parser already latches the previous
+        valid value, so this lookup is safe. We still return ``None`` for any
+        unexpected value rather than silently falling back to "normal", which
+        would mislead users (see issue #57).
+        """
         if self.coordinator.data is None:
             return None
-        return _INT_TO_MODE.get(self.coordinator.data.mode, "normal")
+        return _INT_TO_MODE.get(self.coordinator.data.mode)
 
     async def async_select_option(self, option: str) -> None:
         """Send CMD 220 to change mode.

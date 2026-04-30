@@ -340,7 +340,22 @@ class PetkitBleClient:
             return
         data.power_status = payload[0]
         data.suspend_status = payload[1]
-        data.mode = payload[2]
+        # The CTW3 firmware has been observed to transiently report mode=0 during
+        # the smart-mode sleep phase. Treating that as ground truth would make
+        # the mode select show "Unknown" (it returns None for unknown values)
+        # and any subsequent power-switch toggle would read data.mode == 0/1,
+        # sending the wrong CMD 220 payload and kicking the device out of smart
+        # mode. We therefore only update ``mode`` when the new value is a known
+        # mode (1=normal, 2=smart). See issue #57.
+        new_mode = payload[2]
+        if new_mode in (1, 2):
+            data.mode = new_mode
+        else:
+            _LOGGER.debug(
+                "CTW3 reported mode=%d; keeping latched mode=%d",
+                new_mode,
+                data.mode,
+            )
         data.electric_status = payload[3]
         data.dnd_state = payload[4]
         data.warning_breakdown = payload[5]
@@ -356,6 +371,20 @@ class PetkitBleClient:
         data.battery_voltage_mv = struct.unpack_from(">h", payload, 22)[0]
         data.battery_percent = payload[24]
         data.module_status = payload[25]
+        _LOGGER.debug(
+            "CTW3 state: power=%d suspend=%d mode_raw=%d mode_latched=%d running=%d "
+            "detect=%d electric=%d battery=%d%% filter=%d%% (raw=%s)",
+            data.power_status,
+            data.suspend_status,
+            new_mode,
+            data.mode,
+            data.running_status,
+            data.detect_status,
+            data.electric_status,
+            data.battery_percent,
+            data.filter_percent,
+            payload.hex(),
+        )
 
     @staticmethod
     def _parse_state_generic(data: PetkitFountainData, payload: bytes) -> None:
