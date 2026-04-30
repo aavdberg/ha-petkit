@@ -14,6 +14,7 @@ Apply this knowledge when reading, writing, or reviewing code in `custom_compone
 - **HA minimum:** 2024.1 — uses `entry.runtime_data`, `CoordinatorEntity`, `async_ble_device_from_address`
 - **Python:** 3.12+, `from __future__ import annotations` in every module, `collections.abc.Callable`
 - **Linter:** ruff — run `uv run ruff check custom_components/` before committing
+- **Language:** ALL code, comments, docstrings, commit messages, PR titles/descriptions, and GitHub issues MUST be written in English. No exceptions, even when the user writes in another language.
 - **Branching:** feature/* and fix/* → PR to `dev`; never push directly to `dev` or `main`
 
 ## BLE Frame Format
