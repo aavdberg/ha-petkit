@@ -16,6 +16,8 @@ Apply this knowledge when reading, writing, or reviewing code in `custom_compone
 - **Linter:** ruff — run `uv run ruff check custom_components/` before committing
 - **Language:** ALL code, comments, docstrings, commit messages, PR titles/descriptions, and GitHub issues MUST be written in English. No exceptions, even when the user writes in another language.
 - **Branching:** feature/* and fix/* → PR to `dev`; never push directly to `dev` or `main`
+- **PR review gate:** Always wait for the Copilot code reviewer to *actually submit* its review (not just the workflow run to finish) before merging. The review comments arrive asynchronously after the "Request Copilot Code Review" workflow turns green. Verify with `gh pr view <N> --json reviews` and address every comment before merge.
+- **Post-merge:** After merging to `dev`, verify the `Pre-release` workflow produced a new `v<version>-dev.<timestamp>` GitHub release; this is what HACS beta-testers install.
 
 ## BLE Frame Format
 
