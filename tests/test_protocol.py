@@ -13,6 +13,7 @@ from custom_components.petkit_ble.const import (
 from custom_components.petkit_ble.protocol import (
     build_change_mode_payload,
     build_ctw3_mode_payload,
+    build_ctw3_select_mode_payload,
     build_init_payload,
     build_settings_payload_ctw3,
     build_settings_payload_generic,
@@ -166,6 +167,24 @@ class TestBuildModePayload:
         assert build_ctw3_mode_payload(1, 0, 2) == [1, 0, 2]
         # When power=0, suspend is forced to 0 regardless of the argument passed
         assert build_ctw3_mode_payload(0, 1, 1) == [0, 0, 1]
+
+
+class TestBuildCtw3SelectModePayload:
+    """Tests for build_ctw3_select_mode_payload (regression for issue #54).
+
+    Selecting a mode in HA must always send power=1, regardless of the cached
+    ``power_status``. Otherwise Smart->Normal can silently send [0, 0, 1] and
+    leave the pump off when byte[0] of CMD 210 was momentarily 0 during the
+    smart-mode sleep cycle.
+    """
+
+    def test_select_normal_always_sends_power_on_with_suspend(self) -> None:
+        """Selecting Normal => [1, 1, 1] (power on, pump active)."""
+        assert build_ctw3_select_mode_payload(1) == [1, 1, 1]
+
+    def test_select_smart_always_sends_power_on_without_suspend(self) -> None:
+        """Selecting Smart => [1, 0, 2] (power on, timer-managed)."""
+        assert build_ctw3_select_mode_payload(2) == [1, 0, 2]
 
 
 class TestFrameFormat:
