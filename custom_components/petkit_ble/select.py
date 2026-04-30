@@ -71,7 +71,7 @@ class PetkitModeSelect(PetkitBleEntity, SelectEntity):
             # Generic W5/CTW2: byte[0] = mode (1=normal, 2=smart); selecting a mode implies power-on
             payload = build_change_mode_payload(mode_int)
 
-        _LOGGER.info(
+        _LOGGER.debug(
             "Mode select -> %s (alias=%s): sending CMD 220 payload=%s",
             option,
             data.alias if data is not None else "unknown",

@@ -201,18 +201,36 @@ Every change — no matter how small — **must** follow these steps in order:
    git push -u origin fix/my-fix
    gh pr create --base dev --head fix/my-fix --title "..." --body "..."
    ```
-7. **CI** — Wait for all CI checks to pass (ruff lint, ruff format, HACS validation).
-8. **Review** — After CI passes, check the Copilot code review on the PR:
+7. **CI** — Wait for all CI checks to pass (ruff lint, ruff format, HACS validation,
+   and the "Request Copilot Code Review" workflow).
+8. **Review** — After CI passes, **wait for the Copilot code review to actually be
+   submitted** before merging. The "Request Copilot Code Review" workflow only
+   *triggers* the review; the review comments arrive asynchronously a short time
+   later. Verify the review has been submitted by polling:
+   ```
+   gh pr view <N> --json reviews -q '.reviews[] | select(.author.login=="copilot-pull-request-reviewer") | .submittedAt'
+   ```
+   (Or use the GitHub API `get_reviews` / `get_review_comments` methods.)
+   Only proceed when the review is present. Then:
    - Retrieve all review comments using the GitHub API / `gh` CLI.
    - If there are comments or suggestions, **fix them** in a new commit on the same branch.
    - Reply to each review thread explaining what was fixed.
    - **Resolve** all review threads (using GraphQL `resolveReviewThread` mutation).
-   - Push the fixes and wait for CI to pass again.
+   - Push the fixes and wait for CI to pass again, then re-check the review.
    - Repeat until there are no unresolved comments.
 9. **Merge** — Once CI passes and all review comments are resolved, merge the PR into `dev`:
    ```
    gh pr merge <PR_NUMBER> --squash --delete-branch
    ```
+10. **Verify dev pre-release** — After the merge, confirm that the `Pre-release`
+    workflow created a new `v<version>-dev.<timestamp>` tag/release on `dev`:
+    ```
+    gh run list --workflow pre-release.yml --limit 1
+    gh release list --limit 3
+    ```
+    If the workflow did not run or failed, investigate before moving on. This
+    pre-release is what HACS beta-testers install, so missing it silently breaks
+    their update path.
 
 **NEVER commit or push directly to `dev` or `main`.**  
 Even as admin (bypassed protection), direct pushes skip CI and break the audit trail.
