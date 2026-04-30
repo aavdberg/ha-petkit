@@ -132,6 +132,28 @@ class TestStateParsers:
         assert data.battery_percent == 85
         assert data.module_status == 0x01
 
+    def test_parse_state_ctw3_latches_mode_when_zero(self, sample_ctw3_state_payload: bytes) -> None:
+        """If the device reports mode=0 (e.g. smart-mode sleep), keep last mode.
+
+        Regression test for issue #57: the CTW3 firmware can transiently report
+        mode=0 during the smart-mode sleep phase. Treating that literally caused
+        the HA mode select to flip to "Normal" and subsequent power-switch
+        toggles to drop the device out of smart mode.
+        """
+        buf = bytearray(sample_ctw3_state_payload)
+        buf[2] = 0  # device reports unknown mode
+        data = PetkitFountainData(alias=ALIAS_CTW3, mode=2)  # last known: smart
+        PetkitBleClient._parse_state_ctw3(data, bytes(buf))
+        assert data.mode == 2  # latched, not overwritten with 0
+
+    def test_parse_state_ctw3_accepts_valid_mode_change(self, sample_ctw3_state_payload: bytes) -> None:
+        """A valid mode value (1 or 2) from the device must still update."""
+        buf = bytearray(sample_ctw3_state_payload)
+        buf[2] = 1  # device reports normal
+        data = PetkitFountainData(alias=ALIAS_CTW3, mode=2)
+        PetkitBleClient._parse_state_ctw3(data, bytes(buf))
+        assert data.mode == 1
+
     def test_parse_state_generic(self, sample_generic_state_payload: bytes) -> None:
         """Parse a generic state payload and verify fields."""
         data = PetkitFountainData(alias=ALIAS_W5)
