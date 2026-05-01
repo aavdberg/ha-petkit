@@ -14,6 +14,7 @@ from bleak.backends.device import BLEDevice
 from bleak_retry_connector import establish_connection
 
 from .const import (
+    ALIAS_CTW3,
     AUTH_STEP_DELAY,
     BLE_NOTIFY_UUID,
     BLE_WRITE_UUID,
@@ -26,6 +27,7 @@ from .const import (
     CMD_GET_STATE,
     CMD_SET_TIME,
     CTW3_ALIASES,
+    CTW3_STATE_PAYLOAD_MIN_LEN,
     DEFAULT_FLOW_DIVISOR,
     DEFAULT_FLOW_RATE_LPM,
     DEFAULT_POWER_COEFF_W,
@@ -37,6 +39,7 @@ from .const import (
     FRAME_HEADER,
     FRAME_TYPE_SEND,
     GATT_SERIAL_NUMBER_UUID,
+    KNOWN_ALIASES,
     POWER_COEFF_W,
 )
 from .protocol import build_init_payload, build_time_sync_payload
@@ -508,7 +511,21 @@ class PetkitBleClient:
             # CMD 210 — device state
             payload_210 = await self._send_and_wait(CMD_GET_STATE, FRAME_TYPE_SEND, [])
             if payload_210 is not None:
-                if alias in CTW3_ALIASES:
+                # Self-heal: when the stored alias is unknown (e.g. a MAC was
+                # baked into CONF_MODEL because the BLE local name was not
+                # available at config-flow time), infer the real model from
+                # the CMD 210 payload length. Generic devices return ≤18 bytes;
+                # CTW3 devices return ≥26 bytes (typically 30).
+                if data.alias not in KNOWN_ALIASES and len(payload_210) >= CTW3_STATE_PAYLOAD_MIN_LEN:
+                    _LOGGER.warning(
+                        "Inferring CTW3 alias from CMD 210 payload length %d "
+                        "(stored alias %r is not a known model). The coordinator "
+                        "will persist this correction to the config entry.",
+                        len(payload_210),
+                        data.alias,
+                    )
+                    data.alias = ALIAS_CTW3
+                if data.alias in CTW3_ALIASES:
                     self._parse_state_ctw3(data, payload_210)
                 else:
                     self._parse_state_generic(data, payload_210)
@@ -516,7 +533,7 @@ class PetkitBleClient:
             # CMD 211 — device config (settings)
             payload_211 = await self._send_and_wait(CMD_GET_CONFIG, FRAME_TYPE_SEND, [])
             if payload_211 is not None:
-                if alias in CTW3_ALIASES:
+                if data.alias in CTW3_ALIASES:
                     self._parse_config_ctw3(data, payload_211)
                 else:
                     self._parse_config_generic(data, payload_211)
