@@ -85,5 +85,60 @@ class TestStatePayloadLengthDiscriminator:
 
     def test_threshold_at_or_below_ctw3(self) -> None:
         # CTW3 payloads observed in the field are 26-30 bytes; threshold must
-        # not exceed the smallest observed CTW3 payload.
+        # not exceed the smallest observed CTW3 payload, otherwise valid CTW3
+        # frames would be misclassified as generic.
         assert CTW3_STATE_PAYLOAD_MIN_LEN <= 26
+
+    def test_threshold_matches_ctw3_parser_minimum(self) -> None:
+        # The CTW3 parser requires at least 26 bytes; inferring CTW3 from a
+        # shorter payload would persist the alias and then immediately fail to
+        # parse. Keep the discriminator aligned with the parser minimum.
+        assert CTW3_STATE_PAYLOAD_MIN_LEN == 26
+
+
+class TestCtw3SelfHealInference:
+    """Cover the alias self-heal branch in PetkitBleClient.async_poll.
+
+    async_poll itself requires a connected BleakClient, but the self-heal
+    decision is a pure check on (data.alias, len(payload_210)). Exercise the
+    same condition + parser dispatch the live code uses, to lock in the
+    behaviour: an unknown stored alias plus a CTW3-sized payload must (a)
+    select the CTW3 parser and (b) yield the expected CTW3 fields.
+    """
+
+    def test_mac_alias_with_ctw3_payload_uses_ctw3_parser(self, sample_ctw3_state_payload: bytes) -> None:
+        from custom_components.petkit_ble.ble_client import (
+            PetkitBleClient,
+            PetkitFountainData,
+        )
+        from custom_components.petkit_ble.const import CTW3_ALIASES
+
+        data = PetkitFountainData(alias="A4:C1:38:E6:2B:1C")
+
+        # Mirror the live self-heal condition in async_poll.
+        if data.alias not in KNOWN_ALIASES and len(sample_ctw3_state_payload) >= CTW3_STATE_PAYLOAD_MIN_LEN:
+            data.alias = ALIAS_CTW3
+
+        assert data.alias == ALIAS_CTW3
+        assert data.alias in CTW3_ALIASES
+
+        PetkitBleClient._parse_state_ctw3(data, sample_ctw3_state_payload)
+
+        # Spot-check fields that only the CTW3 parser populates correctly.
+        assert data.power_status == 1
+        assert data.suspend_status == 0
+        assert data.mode == 2
+        assert data.electric_status == 2
+        assert data.battery_percent == 85
+
+    def test_short_payload_does_not_trigger_inference(self) -> None:
+        # An 18-byte generic payload must NOT cause CTW3 inference, even
+        # though the stored alias is unknown.
+        from custom_components.petkit_ble.ble_client import PetkitFountainData
+
+        data = PetkitFountainData(alias="A4:C1:38:E6:2B:1C")
+        payload = bytes(18)
+
+        triggered = data.alias not in KNOWN_ALIASES and len(payload) >= CTW3_STATE_PAYLOAD_MIN_LEN
+
+        assert triggered is False
