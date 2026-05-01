@@ -5,8 +5,9 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from datetime import timedelta
-from typing import TYPE_CHECKING
+from dataclasses import dataclass
+from datetime import date, timedelta
+from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.bluetooth import (
     BluetoothChange,
@@ -17,6 +18,7 @@ from homeassistant.components.bluetooth import (
     async_scanner_count,
 )
 from homeassistant.core import callback
+from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 if TYPE_CHECKING:
@@ -97,6 +99,87 @@ def _reconcile_settings_into(
     return warned
 
 
+@dataclass
+class _DrinkCountState:
+    """Mutable holder for the daily drink-event counter.
+
+    Lives on the coordinator across polls. Extracted into a small
+    dataclass so the counting and persistence logic can be unit-tested
+    via free functions (``_track_drink_event_into`` /
+    ``_load_drink_state_into``) without instantiating the full
+    ``DataUpdateCoordinator`` chain (which is awkward to mock).
+    """
+
+    prev_detect_status: int | None = None
+    count: int = 0
+    date_iso: str = ""
+
+
+async def _load_drink_state_into(state: _DrinkCountState, store: Any) -> None:
+    """Populate ``state`` from a ``Store`` snapshot if one exists.
+
+    Storage failures are swallowed at debug level — they must never block
+    integration setup. A persisted count from a previous day is dropped so
+    today's counter starts from zero.
+    """
+    try:
+        stored = await store.async_load()
+    except Exception as exc:
+        _LOGGER.debug("Failed to load drink-count store: %s", exc)
+        return
+    if not stored:
+        return
+    try:
+        state.count = int(stored.get("count", 0))
+        state.date_iso = str(stored.get("date") or state.date_iso)
+    except (TypeError, ValueError) as exc:
+        _LOGGER.debug("Discarding corrupt drink-count store: %s", exc)
+        return
+    today_iso = date.today().isoformat()
+    if state.date_iso != today_iso:
+        state.count = 0
+        state.date_iso = today_iso
+
+
+async def _track_drink_event_into(
+    state: _DrinkCountState,
+    store: Any,
+    data: PetkitFountainData,
+) -> None:
+    """Update ``state`` from a freshly polled ``data``; persist on change.
+
+    Increments on a ``detect_status`` 0 → 1 transition. Resets the counter
+    when the local date rolls over so the sensor is genuinely a per-day
+    counter. Always writes the current count back onto ``data`` so the
+    sensor reflects the latest value even when nothing changed.
+    """
+    today_iso = date.today().isoformat()
+    if today_iso != state.date_iso:
+        _LOGGER.debug(
+            "Daily drink-count rollover %s → %s (was %d)",
+            state.date_iso,
+            today_iso,
+            state.count,
+        )
+        state.date_iso = today_iso
+        state.count = 0
+
+    cur_detect = data.detect_status
+    count_changed = False
+    if state.prev_detect_status is not None and state.prev_detect_status == 0 and cur_detect == 1:
+        state.count += 1
+        count_changed = True
+        _LOGGER.debug("Drink event detected (count=%d)", state.count)
+    state.prev_detect_status = cur_detect
+    data.drink_event_count = state.count
+
+    if count_changed:
+        try:
+            await store.async_save({"count": state.count, "date": state.date_iso})
+        except Exception as exc:
+            _LOGGER.debug("Failed to persist drink-count store: %s", exc)
+
+
 class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
     """Coordinator that polls a Petkit fountain over BLE."""
 
@@ -116,9 +199,11 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
             _LOGGER.warning("Corrupted device secret for %s, treating as None", self._address)
             self._secret = None
 
-        # Track drink events across polls
-        self._prev_detect_status: int | None = None
-        self._drink_event_count: int = 0
+        # Track drink events across polls. The state is held in a small
+        # dataclass so the counting + persistence logic can live in free
+        # functions (testable without the full coordinator chain).
+        self._drink_state = _DrinkCountState(date_iso=date.today().isoformat())
+        self._drink_store: Store = Store(hass, version=1, key=f"{DOMAIN}_drink_count_{self._address.lower()}")
 
         # Cache for settings fields (CMD 211 / CMD 221). See _SETTINGS_FIELDS
         # docstring for rationale. Populated either by a successful CMD 211
@@ -132,6 +217,18 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
             name=f"{DOMAIN}_{self._address}",
             update_interval=timedelta(seconds=POLL_INTERVAL),
         )
+
+    async def async_load_persistent_state(self) -> None:
+        """Load the persisted drink-event counter from disk.
+
+        Called once before the first refresh so a Home Assistant restart or
+        integration reload no longer wipes today's count to zero.
+        """
+        await _load_drink_state_into(self._drink_state, self._drink_store)
+
+    async def _track_drink_event(self, data: PetkitFountainData) -> None:
+        """Thin wrapper around ``_track_drink_event_into`` for the poll loop."""
+        await _track_drink_event_into(self._drink_state, self._drink_store, data)
 
     def _log_unreachable_diagnostics(self) -> None:
         """Emit a single diagnostic log line explaining why the device is not connectable.
@@ -289,14 +386,9 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
                 data={**self._config_entry.data, CONF_MODEL: data.alias},
             )
 
-        # Track drink events: detect_status transitions 0→1
-        # No pump check — in smart mode the pump may be off while pet drinks
-        cur_detect = data.detect_status
-        if self._prev_detect_status is not None and self._prev_detect_status == 0 and cur_detect == 1:
-            self._drink_event_count += 1
-            _LOGGER.debug("Drink event detected (count=%d)", self._drink_event_count)
-        self._prev_detect_status = cur_detect
-        data.drink_event_count = self._drink_event_count
+        # Track drink events. Counter resets daily and persists across
+        # restarts. See ``_track_drink_event`` for full rationale.
+        await self._track_drink_event(data)
 
         # RSSI from the most recent BLE advertisement (no connection required)
         service_info = async_last_service_info(self.hass, self._address, connectable=False)
