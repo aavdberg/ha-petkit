@@ -5,3 +5,8 @@ dist/
 build/
 .pytest_cache/
 .ruff_cache/
+
+Logs/
+uv.lock
+.venv/
+

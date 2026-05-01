@@ -3,29 +3,29 @@ name: home-assistant-integration-developer
 description: >
   Best practices for developing Home Assistant custom integrations — config flows, coordinators,
   entity platforms, BLE protocol, translations, manifest, and code quality.
-
-  TRIGGER THIS SKILL WHEN:
-  - Creating or modifying a Home Assistant custom integration
-  - Adding new entity platforms (sensor, switch, number, time, select, button, binary_sensor)
-  - Writing or refactoring a config flow (user, bluetooth, options)
-  - Implementing a DataUpdateCoordinator for polling or push data
-  - Creating BLE/Bluetooth integrations with bleak or HA bluetooth stack
-  - Adding translation strings or entity descriptions
-  - Setting up manifest.json with BLE matchers or dependencies
-  - Writing entity description dataclasses with value extractors
-  - Implementing device commands (write-back) through coordinator
-  - Structuring __init__.py setup/unload with runtime_data pattern
-
-  SYMPTOMS: Agent creates entities in __init__.py instead of platform files, uses hass.data[DOMAIN]
-  instead of entry.runtime_data, does I/O in entity properties, skips coordinator, misuses unique IDs,
-  forgets type hints or from __future__ import annotations, imports Callable from typing, hardcodes
-  entity names instead of using translation_key, catches bare Exception without UpdateFailed.
+  Trigger when creating/modifying HA integrations, entity platforms, config flows, coordinators,
+  BLE integrations, translations, manifest, entity descriptions, device commands, or init setup.
 
 metadata:
   version: 1
 ---
 
 # Home Assistant Integration Developer
+
+## When to Trigger This Skill
+
+- Creating or modifying a Home Assistant custom integration
+- Adding new entity platforms (sensor, switch, number, time, select, button, binary_sensor)
+- Writing or refactoring a config flow (user, bluetooth, options)
+- Implementing a DataUpdateCoordinator for polling or push data
+- Creating BLE/Bluetooth integrations with bleak or HA bluetooth stack
+- Adding translation strings or entity descriptions
+- Setting up manifest.json with BLE matchers or dependencies
+- Writing entity description dataclasses with value extractors
+- Implementing device commands (write-back) through coordinator
+- Structuring __init__.py setup/unload with runtime_data pattern
+
+**Common symptoms of missing this skill:** Agent creates entities in `__init__.py` instead of platform files, uses `hass.data[DOMAIN]` instead of `entry.runtime_data`, does I/O in entity properties, skips coordinator, misuses unique IDs, forgets type hints or `from __future__ import annotations`, imports `Callable` from `typing`, hardcodes entity names instead of using `translation_key`, catches bare `Exception` without `UpdateFailed`.
 
 **Core principle:** Follow Home Assistant's native patterns — `DataUpdateCoordinator` for data fetching, `entry.runtime_data` for state, `CoordinatorEntity` for entities, frozen dataclass descriptions for entity metadata, and the repository's current translation layout: use `strings.json` for config/options flow text and `translations/en.json` (mirrored to other `translations/*.json` files) for entity and other user-visible platform strings.
 
