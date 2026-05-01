@@ -116,18 +116,21 @@ def _diff_state_bytes(
 ) -> list[tuple[int, int, int]]:
     """Return ``(index, old, new)`` triples for bytes that changed.
 
-    Indices listed in ``noisy`` are skipped. If the two payloads have
-    different lengths the longer one is treated as ground truth and the
-    appended bytes are reported as additions from ``0x00``.
+    Indices listed in ``noisy`` are skipped. When the two payloads have
+    different lengths the missing positions are treated as ``0x00`` so
+    appended/truncated bytes (e.g. the CTW3 tail at indices 26..29 that
+    appears only in 30-byte frames) are still reported.
     """
     if not prev:
         return []
     out: list[tuple[int, int, int]] = []
-    for i in range(min(len(prev), len(curr))):
+    for i in range(max(len(prev), len(curr))):
         if i in noisy:
             continue
-        if prev[i] != curr[i]:
-            out.append((i, prev[i], curr[i]))
+        old = prev[i] if i < len(prev) else 0
+        new = curr[i] if i < len(curr) else 0
+        if old != new:
+            out.append((i, old, new))
     return out
 
 
@@ -412,11 +415,18 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
         )
 
         # Diagnostic: log changed bytes between consecutive CMD 210 polls.
-        # Only emitted when DEBUG logging is enabled. Skips the noisy
-        # uptime/tick bytes 9..18 so the diff highlights semantic changes
-        # such as pet-detection events (issue #65).
+        # Only emitted when DEBUG logging is enabled. For CTW3, skip the
+        # noisy uptime/tick bytes 9..18 so the diff highlights semantic
+        # changes such as pet-detection events (issue #65). For W4/W5/CTW2
+        # the payload is only 12 bytes long and indices 9..11 carry
+        # meaningful state (pump_runtime tail, filter_percent,
+        # running_status) so we must not suppress them.
         if _LOGGER.isEnabledFor(logging.DEBUG) and data.raw_state:
-            diff = _diff_state_bytes(self._prev_raw_state, data.raw_state)
+            diff = _diff_state_bytes(
+                self._prev_raw_state,
+                data.raw_state,
+                noisy=_CTW3_NOISE_BYTES if data.is_ctw3 else frozenset(),
+            )
             if diff:
                 _LOGGER.debug(
                     "CMD 210 state diff for %s: %s",

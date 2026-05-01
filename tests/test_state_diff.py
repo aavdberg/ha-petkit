@@ -60,3 +60,25 @@ class TestDiffStateBytes:
         assert (26, 0x08, 0xC5) in diff
         # And must exclude every byte inside the noisy uptime window.
         assert all(i not in range(9, 19) for i, _, _ in diff)
+
+    def test_reports_appended_tail_bytes_when_payload_grows(self) -> None:
+        """If a poll returns more bytes than the previous one, the
+        appended indices must surface in the diff (treated as 0x00 -> new).
+
+        Guards the documented behaviour against a regression on CTW3
+        firmware revisions that may switch between 26- and 30-byte CMD 210
+        responses.
+        """
+        prev = bytes(range(20))  # 20 bytes
+        curr = prev + b"\xc5\x06\xbe\x06"  # 24 bytes
+        # Disable the noisy filter so this test exercises only the
+        # length-mismatch behaviour.
+        diff = _diff_state_bytes(prev, curr, noisy=frozenset())
+        assert diff == [(20, 0x00, 0xC5), (21, 0x00, 0x06), (22, 0x00, 0xBE), (23, 0x00, 0x06)]
+
+    def test_reports_truncated_tail_bytes_when_payload_shrinks(self) -> None:
+        """Symmetric guard for shrinking payloads — old bytes vs 0x00."""
+        prev = bytes([0x10, 0x20, 0x30, 0x40])
+        curr = bytes([0x10, 0x20])
+        diff = _diff_state_bytes(prev, curr, noisy=frozenset())
+        assert diff == [(2, 0x30, 0x00), (3, 0x40, 0x00)]
