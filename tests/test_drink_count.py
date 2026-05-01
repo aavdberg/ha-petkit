@@ -199,3 +199,45 @@ class TestPersistence:
         # Must not raise — storage failures must not break the poll loop.
         await _track_drink_event_into(state, store, data)
         assert state.count == 1
+
+
+class TestParserToCounterEndToEnd:
+    """Parser + counter together must increment on real CTW3 fw 111 frames.
+
+    Regression test for issue #65. The captured log
+    ``Logs/home-assistant_petkit_ble_2026-05-01T12-01-29.952Z.log`` contains
+    a real drink event at 13:59 where byte 19 transitions ``0x00 -> 0x02 ->
+    0x00``. Before the parser was fixed to normalise non-zero bytes to 1,
+    the counter never saw a strict 0 → 1 edge and therefore never
+    incremented.
+    """
+
+    # Two real 30-byte CTW3 CMD 210 payloads from the captured log:
+    # 13:59:08 (cat drinks, byte19=0x02) and 14:00:17 (cat leaves, byte19=0x00).
+    DETECTED = bytes.fromhex("010101020000000000002470e907010000b39f02141a10766400c5068508")
+    IDLE_AFTER = bytes.fromhex("0101010200000000000024702f07010000b3e500141410736400c506c706")
+    # Synthesise the "before" idle frame from the captured "detected" frame
+    # by clearing byte 19 — the counter only cares about byte 19 transitions.
+    IDLE_BEFORE = bytes(bytearray(DETECTED)[:19] + b"\x00" + bytearray(DETECTED)[20:])
+
+    @pytest.mark.asyncio
+    async def test_real_drink_event_increments_counter(self, today_iso: str) -> None:
+        """Feed three real frames through parser+counter; expect count=1."""
+        from custom_components.petkit_ble.ble_client import PetkitBleClient
+
+        # Sanity: the captured frames really do flip byte 19 the way we think.
+        assert self.IDLE_BEFORE[19] == 0x00
+        assert self.DETECTED[19] == 0x02
+        assert self.IDLE_AFTER[19] == 0x00
+
+        state = _DrinkCountState(date_iso=today_iso)
+        store = _make_store()
+
+        for raw in (self.IDLE_BEFORE, self.DETECTED, self.IDLE_AFTER):
+            data = PetkitFountainData(alias=ALIAS_CTW3)
+            PetkitBleClient._parse_state_ctw3(data, raw)
+            await _track_drink_event_into(state, store, data)
+
+        assert state.count == 1, (
+            "One drink event observed → counter must read 1; regression for issue #65 (CTW3 fw 111 emits 0x02 not 0x01)"
+        )

@@ -180,6 +180,37 @@ class TestStateParsers:
         assert data.raw_state == sample_ctw3_state_payload
         assert data.state_tail == b""
 
+    def test_parse_state_ctw3_normalises_detect_status_value_2(self) -> None:
+        """CTW3 fw 111 emits ``0x02`` for "pet detected", not ``0x01``.
+
+        Regression test for issue #65: captured at 13:59:08 in
+        ``Logs/home-assistant_petkit_ble_2026-05-01T12-01-29.952Z.log`` while
+        the cat was visibly drinking. Without normalisation the drink-event
+        counter never increments because it requires a strict 0 → 1 transition.
+        """
+        raw = bytes.fromhex("01010102000000000000246fe907010000b39f02141a10766400c5068508")
+        assert raw[19] == 0x02  # the smoking gun
+
+        data = PetkitFountainData(alias=ALIAS_CTW3)
+        PetkitBleClient._parse_state_ctw3(data, raw)
+
+        assert data.detect_status == 1, "detect_status must be normalised to 0/1; raw byte 19 was 0x02"
+
+    def test_parse_state_ctw3_detect_status_zero_when_clear(self) -> None:
+        """Counterpart of the above: byte 19 = 0x00 → detect_status stays 0.
+
+        Captured at 14:00:17 (just after the cat moved away) — the
+        ``0x02 -> 0x00`` transition on byte 19 is what the binary sensor
+        observes when the device clears the detection flag.
+        """
+        raw = bytes.fromhex("0101010200000000000024702f07010000b3e500141410736400c506c706")
+        assert raw[19] == 0x00
+
+        data = PetkitFountainData(alias=ALIAS_CTW3)
+        PetkitBleClient._parse_state_ctw3(data, raw)
+
+        assert data.detect_status == 0
+
     def test_parse_state_generic_does_not_set_state_tail(self, sample_generic_state_payload: bytes) -> None:
         """Non-CTW3 payloads never populate the CTW3-specific tail."""
         data = PetkitFountainData(alias=ALIAS_W5)

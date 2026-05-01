@@ -404,7 +404,11 @@ class PetkitBleClient:
         data.filter_percent = payload[13]
         data.running_status = payload[14]
         data.pump_runtime_today = struct.unpack_from(">I", payload, 15)[0]
-        data.detect_status = payload[19]
+        # Normalize to 0/1: CTW3 firmware 111 has been observed to use
+        # value 2 (not 1) when the proximity sensor sees a pet. Treating any
+        # non-zero value as "detected" makes the field future-proof against
+        # other bit patterns (issue #65).
+        data.detect_status = 1 if payload[19] else 0
         data.supply_voltage_mv = struct.unpack_from(">h", payload, 20)[0]
         data.battery_voltage_mv = struct.unpack_from(">h", payload, 22)[0]
         data.battery_percent = payload[24]
