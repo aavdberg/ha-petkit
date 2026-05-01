@@ -18,7 +18,11 @@ Apply this knowledge when reading, writing, or reviewing code in `custom_compone
 - **Branching:** feature/* and fix/* → PR to `dev`; never push directly to `dev` or `main`
 - **PR review gate:** Always wait for the Copilot code reviewer to *actually submit* its review (not just the workflow run to finish) before merging. The review comments arrive asynchronously after the "Request Copilot Code Review" workflow turns green. Verify with `gh pr view <N> --json reviews` and address every comment before merge.
 - **Post-merge:** After merging to `dev`, verify the `Pre-release` workflow produced a new `v<version>-dev.<timestamp>` GitHub release; this is what HACS beta-testers install.
-- **Releasing dev → main:** Each `dev` → `main` promotion is a stable release and **must** bump `manifest.json` to the next **minor** (e.g. `1.1.8` → `1.2.0`, `1.2.2` → `1.3.0`, `1.5.7` → `1.6.0`; reset patch to `0`). The version bump goes onto `dev` first (via a normal PR), then open the release PR `dev` → `main` titled `release: vX.Y.0 — …`, wait for CI + Copilot review submitted, resolve comments, and **merge with a merge commit (`--merge`, NOT squash)** so the dev PR history is preserved. `release.yml` then publishes the stable `vX.Y.0` GitHub Release. Major bumps (`1.x.y` → `2.0.0`) are reserved for breaking changes and need explicit user approval.
+- **Releasing dev → main:** Each `dev` → `main` promotion is a stable release. See `.github/copilot-instructions.md` → *Releasing — promoting `dev` → `main`* for the full checklist. Quick reference:
+  - Bump `manifest.json` to the next **minor** before the release PR (`1.1.8` → `1.2.0`, `1.2.2` → `1.3.0`, `1.5.7` → `1.6.0`; reset patch to `0`). Land that bump via a normal `chore/release-…` PR into `dev` first.
+  - Open the release PR titled `release: vX.Y.0 — <summary>` against `main`; wait for CI + Copilot review submitted, resolve comments.
+  - **Merge with a merge commit (`--merge`, NOT squash)** so the dev PR history is preserved on `main`. `release.yml` then publishes the stable `vX.Y.0` GitHub Release.
+  - Major bumps (`1.x.y` → `2.0.0`) require explicit user approval.
 
 ## BLE Frame Format
 

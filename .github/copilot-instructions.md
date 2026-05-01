@@ -250,16 +250,17 @@ versions are the right granularity for "shipped to all HACS users".
 - While working on `dev`, patch increments (`1.1.x`) are used for each
   fix/feature PR — that's what the `Pre-release` workflow tags as
   `v1.1.x-dev.<timestamp>` for HACS beta testers.
-- When opening the release PR `dev` → `main`, **bump
-  `custom_components/petkit_ble/manifest.json` to the next minor**:
+- **Before** opening the release PR, land a normal `chore/release-…` PR
+  into `dev` that bumps `custom_components/petkit_ble/manifest.json` to
+  the next minor (patch reset to `0`):
   - `1.1.8` → `1.2.0`
   - `1.2.2` → `1.3.0`
   - `1.5.7` → `1.6.0`
-  Reset patch to `0`.
-- Do this in a dedicated commit on `dev` *before* opening the release PR
-  (or as the first commit of a short-lived `release/vX.Y.0` branch). The
-  release workflow reads the version from `manifest.json`, so the bump
-  must be on `dev` HEAD when the release PR is merged.
+
+  The release workflow reads the version from `manifest.json`, so the
+  bump must already be on `dev` HEAD when the release PR is merged into
+  `main`. Use the existing `chore/*` branch prefix — no new branch
+  category is introduced for this step.
 - **Major version bumps** (`1.x.y` → `2.0.0`) are reserved for breaking
   changes to the integration's user-facing config or entity model and
   must be discussed with the user first.
