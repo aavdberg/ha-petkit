@@ -212,13 +212,12 @@ class TestParserToCounterEndToEnd:
     incremented.
     """
 
-    # Two real 30-byte CTW3 CMD 210 payloads from the captured log:
-    # 13:59:08 (cat drinks, byte19=0x02) and 14:00:17 (cat leaves, byte19=0x00).
+    # Three real 30-byte CTW3 CMD 210 payloads from the captured log:
+    # 13:58:00 (idle, byte19=0x00) → 13:59:08 (cat drinks, byte19=0x02) →
+    # 14:00:17 (cat leaves, byte19=0x00).
+    IDLE_BEFORE = bytes.fromhex("010101020000000000002470a507010000b35b00141a10736400c506c306")
     DETECTED = bytes.fromhex("010101020000000000002470e907010000b39f02141a10766400c5068508")
     IDLE_AFTER = bytes.fromhex("0101010200000000000024702f07010000b3e500141410736400c506c706")
-    # Synthesise the "before" idle frame from the captured "detected" frame
-    # by clearing byte 19 — the counter only cares about byte 19 transitions.
-    IDLE_BEFORE = bytes(bytearray(DETECTED)[:19] + b"\x00" + bytearray(DETECTED)[20:])
 
     @pytest.mark.asyncio
     async def test_real_drink_event_increments_counter(self, today_iso: str) -> None:
