@@ -154,6 +154,39 @@ class TestStateParsers:
         PetkitBleClient._parse_state_ctw3(data, bytes(buf))
         assert data.mode == 1
 
+    def test_parse_state_ctw3_captures_state_tail_when_30_bytes(self) -> None:
+        """30-byte CTW3 payload populates state_tail and raw_state.
+
+        The ground-truth log captured for issue #65 contains 30-byte frames
+        whose trailing four bytes (26..29) are not yet decoded but vary
+        between idle and post-drink samples — see plan.md.
+        """
+        # Synthesised from real CTW3 fw 111 frame at 12:14:57:
+        # raw=01010102000000000000245787080100009b3d00141a10736400c506be06
+        raw = bytes.fromhex("01010102000000000000245787080100009b3d00141a10736400c506be06")
+        data = PetkitFountainData(alias=ALIAS_CTW3)
+        PetkitBleClient._parse_state_ctw3(data, raw)
+        assert data.raw_state == raw
+        assert data.state_tail == bytes.fromhex("c506be06")
+        # All previously-known fields keep their meaning
+        assert data.power_status == 1
+        assert data.battery_percent == 100
+        assert data.filter_percent == 8
+
+    def test_parse_state_ctw3_state_tail_empty_for_26_byte_payload(self, sample_ctw3_state_payload: bytes) -> None:
+        """Older CTW3 firmware returns 26 bytes with no trailing tail."""
+        data = PetkitFountainData(alias=ALIAS_CTW3)
+        PetkitBleClient._parse_state_ctw3(data, sample_ctw3_state_payload)
+        assert data.raw_state == sample_ctw3_state_payload
+        assert data.state_tail == b""
+
+    def test_parse_state_generic_does_not_set_state_tail(self, sample_generic_state_payload: bytes) -> None:
+        """Non-CTW3 payloads never populate the CTW3-specific tail."""
+        data = PetkitFountainData(alias=ALIAS_W5)
+        PetkitBleClient._parse_state_generic(data, sample_generic_state_payload)
+        assert data.raw_state == sample_generic_state_payload
+        assert data.state_tail == b""
+
     def test_parse_state_generic(self, sample_generic_state_payload: bytes) -> None:
         """Parse a generic state payload and verify fields."""
         data = PetkitFountainData(alias=ALIAS_W5)

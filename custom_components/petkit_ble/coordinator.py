@@ -100,6 +100,37 @@ def _reconcile_settings_into(
     return warned
 
 
+# Byte indices in the CMD 210 payload that are known to change every poll
+# (running-uptime ms tick / sequence counter on CTW3 firmware 111). Excluded
+# from the diff log so the diff highlights only semantically-meaningful
+# changes — making it easy to spot which byte carries an event signal such
+# as pet-detection (see issue #65).
+_CTW3_NOISE_BYTES: frozenset[int] = frozenset(range(9, 19))
+
+
+def _diff_state_bytes(
+    prev: bytes,
+    curr: bytes,
+    *,
+    noisy: frozenset[int] = _CTW3_NOISE_BYTES,
+) -> list[tuple[int, int, int]]:
+    """Return ``(index, old, new)`` triples for bytes that changed.
+
+    Indices listed in ``noisy`` are skipped. If the two payloads have
+    different lengths the longer one is treated as ground truth and the
+    appended bytes are reported as additions from ``0x00``.
+    """
+    if not prev:
+        return []
+    out: list[tuple[int, int, int]] = []
+    for i in range(min(len(prev), len(curr))):
+        if i in noisy:
+            continue
+        if prev[i] != curr[i]:
+            out.append((i, prev[i], curr[i]))
+    return out
+
+
 @dataclass
 class _DrinkCountState:
     """Mutable holder for the daily drink-event counter.
@@ -220,6 +251,11 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
         # parse or by an entity-driven write via apply_setting_optimistic().
         self._settings_cache: dict[str, int] = {}
         self._warned_no_config: bool = False
+
+        # Previous CMD 210 raw payload, kept so we can log a byte-by-byte
+        # diff between consecutive polls (see _diff_state_bytes). Used as a
+        # diagnostic aid for issue #65 (CTW3 detect_status offset unknown).
+        self._prev_raw_state: bytes = b""
 
         super().__init__(
             hass,
@@ -374,6 +410,20 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
         _LOGGER.debug(
             "Polled %s: power=%s mode=%s firmware=%s", self._name, data.power_status, data.mode, data.firmware
         )
+
+        # Diagnostic: log changed bytes between consecutive CMD 210 polls.
+        # Only emitted when DEBUG logging is enabled. Skips the noisy
+        # uptime/tick bytes 9..18 so the diff highlights semantic changes
+        # such as pet-detection events (issue #65).
+        if _LOGGER.isEnabledFor(logging.DEBUG) and data.raw_state:
+            diff = _diff_state_bytes(self._prev_raw_state, data.raw_state)
+            if diff:
+                _LOGGER.debug(
+                    "CMD 210 state diff for %s: %s",
+                    self._name,
+                    " ".join(f"byte[{i}]=0x{old:02x}->0x{new:02x}" for i, old, new in diff),
+                )
+            self._prev_raw_state = data.raw_state
 
         self._reconcile_settings(data)
 

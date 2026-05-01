@@ -57,7 +57,8 @@
       "firmware": {"name": "Firmware"},
       "hardware_version": {"name": "Hardware Version"},
       "rssi": {"name": "Signal Strength"},
-      "drink_count": {"name": "Drink Events Today"}
+      "drink_count": {"name": "Drink Events Today"},
+      "state_tail_hex": {"name": "CTW3 State Tail (hex)"}
     },
     "binary_sensor": {
       "pump_running": {"name": "Pump Running"},
