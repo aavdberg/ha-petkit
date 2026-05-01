@@ -113,6 +113,15 @@ class PetkitFountainData:
     battery_work_time: int = 0
     battery_sleep_time: int = 0
 
+    # True once a CMD 211 (read settings) response has been parsed at least
+    # once for this entry. Some firmware revisions never reply to CMD 211
+    # (observed on CTW3 fw 111). When this flag is False, the cached
+    # settings fields are still at dataclass defaults — writing CMD 221
+    # would zero out smart-cycle / battery / DND / lock values on the
+    # device. protocol.build_full_settings_payload logs a one-shot warning
+    # in that case.
+    config_loaded: bool = False
+
     @property
     def is_ctw3(self) -> bool:
         """Return True if device uses the CTW3 extended state format."""
@@ -425,6 +434,7 @@ class PetkitBleClient:
         data.do_not_disturb_switch = payload[8]
         if len(payload) >= 10:
             data.is_locked = payload[9]
+        data.config_loaded = True
 
     @staticmethod
     def _parse_config_generic(data: PetkitFountainData, payload: bytes) -> None:
@@ -444,6 +454,7 @@ class PetkitBleClient:
             data.dnd_end_minutes = struct.unpack_from(">H", payload, 11)[0]
         if len(payload) >= 14:
             data.is_locked = payload[13]
+        data.config_loaded = True
 
     # ------------------------------------------------------------------
     # Device initialization (first-time setup only)
