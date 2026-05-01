@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
 
 from .ble_client import PetkitBleClient, PetkitFountainData
-from .const import CONF_ADDRESS, CONF_DEVICE_SECRET, CONF_MODEL, CONF_NAME, DOMAIN, POLL_INTERVAL
+from .const import CONF_ADDRESS, CONF_DEVICE_SECRET, CONF_MODEL, CONF_NAME, DOMAIN, KNOWN_ALIASES, POLL_INTERVAL
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -201,6 +201,25 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
         _LOGGER.debug(
             "Polled %s: power=%s mode=%s firmware=%s", self._name, data.power_status, data.mode, data.firmware
         )
+
+        # Self-heal persistence: if the BLE client inferred a corrected alias
+        # from the CMD 210 payload (e.g. when the original entry stored a MAC
+        # as CONF_MODEL), persist the corrected alias to the config entry so
+        # subsequent polls — and any switch/select writes — use the correct
+        # device model immediately.
+        if data.alias and data.alias != self._alias and data.alias in KNOWN_ALIASES:
+            _LOGGER.warning(
+                "Auto-correcting stored model for %s (%s): %r → %r. Persisting to config entry.",
+                self._name,
+                self._address,
+                self._alias,
+                data.alias,
+            )
+            self._alias = data.alias
+            self.hass.config_entries.async_update_entry(
+                self._config_entry,
+                data={**self._config_entry.data, CONF_MODEL: data.alias},
+            )
 
         # Track drink events: detect_status transitions 0→1
         # No pump check — in smart mode the pump may be off while pet drinks
