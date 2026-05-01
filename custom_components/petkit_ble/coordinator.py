@@ -6,7 +6,7 @@ import asyncio
 import logging
 import time
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import timedelta
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.bluetooth import (
@@ -20,6 +20,7 @@ from homeassistant.components.bluetooth import (
 from homeassistant.core import callback
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import dt as dt_util
 
 if TYPE_CHECKING:
     from bleak.backends.device import BLEDevice
@@ -130,12 +131,18 @@ async def _load_drink_state_into(state: _DrinkCountState, store: Any) -> None:
     if not stored:
         return
     try:
-        state.count = int(stored.get("count", 0))
+        count = int(stored.get("count", 0))
         state.date_iso = str(stored.get("date") or state.date_iso)
     except (TypeError, ValueError) as exc:
         _LOGGER.debug("Discarding corrupt drink-count store: %s", exc)
         return
-    today_iso = date.today().isoformat()
+    # Defensive: a corrupt or hand-edited store could persist a negative
+    # count, which would surface as a negative sensor value. Discard it.
+    if count < 0:
+        _LOGGER.debug("Discarding negative drink-count from store: %d", count)
+        return
+    state.count = count
+    today_iso = dt_util.now().date().isoformat()
     if state.date_iso != today_iso:
         state.count = 0
         state.date_iso = today_iso
@@ -153,7 +160,7 @@ async def _track_drink_event_into(
     counter. Always writes the current count back onto ``data`` so the
     sensor reflects the latest value even when nothing changed.
     """
-    today_iso = date.today().isoformat()
+    today_iso = dt_util.now().date().isoformat()
     if today_iso != state.date_iso:
         _LOGGER.debug(
             "Daily drink-count rollover %s → %s (was %d)",
@@ -201,9 +208,12 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
 
         # Track drink events across polls. The state is held in a small
         # dataclass so the counting + persistence logic can live in free
-        # functions (testable without the full coordinator chain).
-        self._drink_state = _DrinkCountState(date_iso=date.today().isoformat())
-        self._drink_store: Store = Store(hass, version=1, key=f"{DOMAIN}_drink_count_{self._address.lower()}")
+        # functions (testable without the full coordinator chain). The
+        # storage key uses ``config_entry.entry_id`` rather than the raw
+        # MAC because storage keys map to filenames under ``.storage/``
+        # and colons are invalid on some filesystems (notably Windows).
+        self._drink_state = _DrinkCountState(date_iso=dt_util.now().date().isoformat())
+        self._drink_store: Store = Store(hass, version=1, key=f"{DOMAIN}_drink_count_{config_entry.entry_id}")
 
         # Cache for settings fields (CMD 211 / CMD 221). See _SETTINGS_FIELDS
         # docstring for rationale. Populated either by a successful CMD 211

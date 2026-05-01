@@ -31,6 +31,8 @@ _HA_STUBS = [
     "homeassistant.helpers.entity_platform",
     "homeassistant.helpers.storage",
     "homeassistant.helpers.update_coordinator",
+    "homeassistant.util",
+    "homeassistant.util.dt",
     "bleak",
     "bleak.backends",
     "bleak.backends.device",
@@ -41,6 +43,16 @@ _HA_STUBS = [
 for mod_name in _HA_STUBS:
     if mod_name not in sys.modules:
         sys.modules[mod_name] = MagicMock()
+
+# Make ``homeassistant.util.dt.now()`` behave like the real helper so date /
+# timezone-dependent code under test can call ``.date().isoformat()`` on it.
+# Stitch the parent attribute too: ``from homeassistant.util import dt as
+# dt_util`` resolves through the parent's attribute, not via sys.modules.
+import datetime as _datetime  # noqa: E402
+
+_dt_module = sys.modules["homeassistant.util.dt"]
+_dt_module.now = lambda: _datetime.datetime.now()
+sys.modules["homeassistant.util"].dt = _dt_module
 
 
 @pytest.fixture
