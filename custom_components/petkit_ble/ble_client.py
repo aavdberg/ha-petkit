@@ -232,11 +232,18 @@ class PetkitBleClient:
         type_: int,
         data: list[int],
         timeout: float = 5.0,
+        *,
+        quiet: bool = False,
     ) -> bytes | None:
         """Send a command frame and wait for the matching response.
 
         Unsolicited notifications with a different cmd byte (e.g. CTW3 CMD 230
         extended state pushes) are discarded while waiting for the expected reply.
+
+        ``quiet=True`` demotes the per-poll timeout warning to DEBUG. Use it for
+        commands that are known to never reply on certain firmware revisions
+        (e.g. CMD 211 on CTW3 fw 111) so the log is not flooded; the higher
+        coordinator layer is responsible for surfacing the user-visible warning.
         """
         assert self._client is not None
         seq = self._next_seq()
@@ -245,15 +252,16 @@ class PetkitBleClient:
         _LOGGER.debug("TX CMD %d: %s", cmd, frame.hex())
         loop = asyncio.get_running_loop()
         deadline = loop.time() + timeout
+        log_timeout = _LOGGER.debug if quiet else _LOGGER.warning
         while True:
             remaining = deadline - loop.time()
             if remaining <= 0:
-                _LOGGER.warning("Timeout waiting for response to CMD %d", cmd)
+                log_timeout("Timeout waiting for response to CMD %d", cmd)
                 return None
             try:
                 raw = await asyncio.wait_for(self._rx_queue.get(), remaining)
             except TimeoutError:
-                _LOGGER.warning("Timeout waiting for response to CMD %d", cmd)
+                log_timeout("Timeout waiting for response to CMD %d", cmd)
                 return None
             parsed = self._parse_frame(raw)
             if parsed is None:
@@ -542,7 +550,13 @@ class PetkitBleClient:
                     self._parse_state_generic(data, payload_210)
 
             # CMD 211 — device config (settings)
-            payload_211 = await self._send_and_wait(CMD_GET_CONFIG, FRAME_TYPE_SEND, [])
+            # CTW3 firmware 111 is known to never reply to CMD 211, so we
+            # demote the timeout to DEBUG for that alias to avoid flooding
+            # the log every minute. The coordinator still emits a single
+            # WARNING via _reconcile_settings_into() the first time, and
+            # the settings cache keeps user-set values intact across polls.
+            quiet_211 = data.alias in CTW3_ALIASES
+            payload_211 = await self._send_and_wait(CMD_GET_CONFIG, FRAME_TYPE_SEND, [], quiet=quiet_211)
             if payload_211 is not None:
                 if data.alias in CTW3_ALIASES:
                     self._parse_config_ctw3(data, payload_211)
