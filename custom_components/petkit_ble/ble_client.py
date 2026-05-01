@@ -113,6 +113,19 @@ class PetkitFountainData:
     battery_work_time: int = 0
     battery_sleep_time: int = 0
 
+    # Raw CMD 210 payload as last received. Kept so the coordinator can log
+    # a byte-by-byte diff between consecutive polls — a diagnostic aid for
+    # reverse-engineering CTW3 fields whose offsets are not yet known
+    # (notably ``detect_status``; see issue #65).
+    raw_state: bytes = b""
+
+    # Bytes 26..29 of the CTW3 30-byte CMD 210 payload. Currently unparsed
+    # — exposed via a hidden diagnostic sensor so users can graph their
+    # behaviour while we narrow down which byte carries the real
+    # ``detect_status``. Always empty for non-CTW3 devices and for older
+    # CTW3 firmware that returns only 26 bytes.
+    state_tail: bytes = b""
+
     # True once a CMD 211 (read settings) response has been parsed at least
     # once for this entry. Some firmware revisions never reply to CMD 211
     # (observed on CTW3 fw 111). When this flag is False, the cached
@@ -358,6 +371,11 @@ class PetkitBleClient:
         if len(payload) < 26:
             _LOGGER.warning("CTW3 state payload too short: %d bytes", len(payload))
             return
+        data.raw_state = bytes(payload)
+        # Bytes 26..29 are not yet decoded by this parser — see issue #65.
+        # Captured raw so the user (and future maintainers) can correlate
+        # them with observed pet-detection events via the diagnostic sensor.
+        data.state_tail = bytes(payload[26:30]) if len(payload) >= 30 else b""
         data.power_status = payload[0]
         data.suspend_status = payload[1]
         # The CTW3 firmware has been observed to transiently report mode=0 during
@@ -412,6 +430,7 @@ class PetkitBleClient:
         if len(payload) < 12:
             _LOGGER.warning("State payload too short: %d bytes", len(payload))
             return
+        data.raw_state = bytes(payload)
         data.power_status = payload[0]
         data.mode = payload[1]
         data.dnd_state = payload[2]
