@@ -127,9 +127,12 @@ class PetkitBleNumber(PetkitBleEntity, NumberEntity):
         data = self.coordinator.data
         if data is None:
             return
-        payload = build_full_settings_payload(data, **{self.entity_description.field_name: int(value)})
+        int_value = int(value)
+        payload = build_full_settings_payload(data, **{self.entity_description.field_name: int_value})
         success = await self.coordinator.async_send_command(CMD_WRITE_SETTINGS, payload)
         if success:
+            # Optimistic local update — see PetkitSettingsSwitch._set_value.
+            setattr(data, self.entity_description.field_name, int_value)
             await self.coordinator.async_request_refresh()
         else:
             _LOGGER.error("Failed to set %s to %s", self.entity_description.key, value)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import struct
 import time
 from typing import TYPE_CHECKING
@@ -10,6 +11,12 @@ from .const import CTW3_ALIASES, PETKIT_EPOCH_OFFSET
 
 if TYPE_CHECKING:
     from .ble_client import PetkitFountainData
+
+_LOGGER = logging.getLogger(__name__)
+
+# Set of id(data) values for which we already logged the "no CMD 211 yet"
+# warning, so we warn once per entry per HA process lifetime.
+_WARNED_NO_CONFIG: set[int] = set()
 
 
 def build_time_sync_payload() -> list[int]:
@@ -44,6 +51,17 @@ def build_full_settings_payload(data: PetkitFountainData, **overrides: int) -> l
 
     This is the single shared helper used by switch, number, and time platforms.
     """
+    if not data.config_loaded:
+        key = id(data)
+        if key not in _WARNED_NO_CONFIG:
+            _WARNED_NO_CONFIG.add(key)
+            _LOGGER.warning(
+                "CMD 211 (read settings) has not yet succeeded for alias=%s; "
+                "writing CMD 221 will use cached/default values for unread "
+                "fields. Avoid changing multiple settings at once until a "
+                "poll succeeds.",
+                data.alias,
+            )
     if data.alias in CTW3_ALIASES:
         return build_settings_payload_ctw3(
             smart_work=overrides.get("smart_time_on", data.smart_time_on),
