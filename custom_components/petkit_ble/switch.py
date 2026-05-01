@@ -123,11 +123,11 @@ class PetkitSettingsSwitch(PetkitBleEntity, SwitchEntity):
         payload = build_full_settings_payload(data, **{self._field_name: value})
         success = await self.coordinator.async_send_command(CMD_WRITE_SETTINGS, payload)
         if success:
-            # Optimistically update local state. Some firmware revisions
-            # never reply to CMD 211, so the next poll won't refresh this
-            # field — without this update the UI would flip back to the
-            # stale cached value.
-            setattr(data, self._field_name, value)
+            # Persist the change in the coordinator's settings cache and live
+            # data so it survives the next async_poll() (which constructs a
+            # fresh PetkitFountainData) even on firmware revisions where
+            # CMD 211 never replies.
+            self.coordinator.apply_setting_optimistic(self._field_name, value)
             await self.coordinator.async_request_refresh()
         else:
             _LOGGER.error("Failed to set %s to %d", self._field_name, value)

@@ -30,11 +30,71 @@ from .const import CONF_ADDRESS, CONF_DEVICE_SECRET, CONF_MODEL, CONF_NAME, DOMA
 
 _LOGGER = logging.getLogger(__name__)
 
+# Settings fields populated by CMD 211 and writable via CMD 221. When CMD 211
+# fails (e.g. CTW3 firmware 111 never responds to it), these would otherwise
+# stay at dataclass defaults and silently flip back after every poll, and any
+# CMD 221 write would zero out unrelated fields. We cache the last known value
+# of each on the coordinator and re-apply it onto fresh poll results so that
+# user writes persist across polls even when the device never replies to 211.
+_SETTINGS_FIELDS: tuple[str, ...] = (
+    "smart_time_on",
+    "smart_time_off",
+    "led_switch",
+    "led_brightness",
+    "do_not_disturb_switch",
+    "is_locked",
+    "battery_work_time",
+    "battery_sleep_time",
+    "led_on_minutes",
+    "led_off_minutes",
+    "dnd_start_minutes",
+    "dnd_end_minutes",
+)
+
 # How long to wait for a connectable advertisement before giving up. The proxy
 # emits adverts every ~500ms, but it can be unavailable for a few seconds while
 # it is mid-connect to another device. A 15s grace window covers that case
 # without significantly delaying genuine "device powered off" failures.
 CONNECTABLE_WAIT_TIMEOUT = 15.0
+
+
+def _reconcile_settings_into(
+    data: PetkitFountainData,
+    cache: dict[str, int],
+    *,
+    warned: bool,
+    name: str,
+    address: str,
+) -> bool:
+    """Pure helper for ``PetkitBleCoordinator._reconcile_settings``.
+
+    Mutates ``data`` and ``cache`` in place. Returns the new value of the
+    ``warned_no_config`` flag (True once we've emitted the warning).
+
+    Extracted as a free function so it can be unit-tested without
+    constructing a full coordinator (which inherits from
+    ``DataUpdateCoordinator`` and is awkward to instantiate).
+    """
+    if data.config_loaded:
+        for field in _SETTINGS_FIELDS:
+            cache[field] = getattr(data, field)
+        return warned
+    if cache:
+        for field, value in cache.items():
+            setattr(data, field, value)
+        data.config_loaded = True
+        return warned
+    if not warned:
+        _LOGGER.warning(
+            "CMD 211 (read settings) has not yet succeeded for %s (%s, alias=%s); "
+            "writing CMD 221 will use defaults for unread fields. The first "
+            "successful poll or user-driven write will populate the cache.",
+            name,
+            address,
+            data.alias,
+        )
+        return True
+    return warned
 
 
 class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
@@ -59,6 +119,12 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
         # Track drink events across polls
         self._prev_detect_status: int | None = None
         self._drink_event_count: int = 0
+
+        # Cache for settings fields (CMD 211 / CMD 221). See _SETTINGS_FIELDS
+        # docstring for rationale. Populated either by a successful CMD 211
+        # parse or by an entity-driven write via apply_setting_optimistic().
+        self._settings_cache: dict[str, int] = {}
+        self._warned_no_config: bool = False
 
         super().__init__(
             hass,
@@ -202,6 +268,8 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
             "Polled %s: power=%s mode=%s firmware=%s", self._name, data.power_status, data.mode, data.firmware
         )
 
+        self._reconcile_settings(data)
+
         # Self-heal persistence: if the BLE client inferred a corrected alias
         # from the CMD 210 payload (e.g. when the original entry stored a MAC
         # as CONF_MODEL), persist the corrected alias to the config entry so
@@ -237,6 +305,22 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
 
         return data
 
+    def _reconcile_settings(self, data: PetkitFountainData) -> None:
+        """Reconcile the settings cache with a freshly polled data object.
+
+        Each ``async_poll`` constructs a brand-new ``PetkitFountainData``, so
+        any settings that were not refreshed by a CMD 211 response would
+        revert to dataclass defaults — visibly flipping switches back in the
+        UI and zeroing unrelated fields on the next CMD 221 write.
+        """
+        self._warned_no_config = _reconcile_settings_into(
+            data,
+            self._settings_cache,
+            warned=self._warned_no_config,
+            name=self._name,
+            address=self._address,
+        )
+
     async def async_send_command(self, cmd: int, data: list[int]) -> bool:
         """Send a single BLE command, serialised with the poll lock.
 
@@ -254,3 +338,26 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
                 )
                 return False
             return await client.async_send_command(cmd, data, self._alias, self._secret)
+
+    @callback
+    def apply_setting_optimistic(self, field: str, value: int) -> None:
+        """Persist a CMD 221 write into the live data and the settings cache.
+
+        Entities call this after a successful CMD 221 so that:
+          1. The live ``coordinator.data`` reflects the new value immediately
+             (so the UI does not flip back while waiting for the next poll).
+          2. The cache survives the dataclass replacement performed by the
+             next ``async_poll`` call. ``_async_update_data`` re-applies the
+             cache when CMD 211 fails to populate the field naturally.
+
+        ``async_set_updated_data`` is invoked so listeners (entities) refresh
+        their state without waiting on a network round trip.
+        """
+        if field not in _SETTINGS_FIELDS:
+            _LOGGER.debug("apply_setting_optimistic: unknown field %r ignored", field)
+            return
+        self._settings_cache[field] = value
+        if self.data is not None:
+            setattr(self.data, field, value)
+            self.data.config_loaded = True
+            self.async_set_updated_data(self.data)
