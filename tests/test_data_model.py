@@ -271,9 +271,9 @@ class TestStateParsers:
         buf[1] = 7  # smart_sleep
         struct.pack_into(">H", buf, 2, 300)  # battery_work_time
         struct.pack_into(">H", buf, 4, 600)  # battery_sleep_time
-        buf[6] = 1  # led_switch
-        buf[7] = 5  # led_brightness
-        buf[8] = 1  # dnd_enabled
+        buf[6] = 1  # dnd_enabled
+        buf[7] = 1  # led_switch
+        buf[8] = 5  # led_brightness
         buf[9] = 0  # child_lock
 
         data = PetkitFountainData(alias=ALIAS_CTW3)

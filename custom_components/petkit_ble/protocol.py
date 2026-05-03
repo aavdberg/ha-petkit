@@ -82,8 +82,16 @@ def build_settings_payload_ctw3(
     """Build the payload for CMD 221 (write settings) for CTW3 devices.
 
     Layout: [smart_work, smart_sleep, batt_work_hi, batt_work_lo,
-             batt_sleep_hi, batt_sleep_lo, led_switch, led_brightness,
-             dnd_enabled, child_lock]
+             batt_sleep_hi, batt_sleep_lo, dnd_enabled, led_switch,
+             led_brightness, child_lock]
+
+    Reverse-engineered from real-device CMD 221 captures:
+    confirmed user actions ``LED on -> brightness 1/8/9 -> LED off`` map
+    cleanly to ``payload[7] = led_switch`` and ``payload[8] = led_brightness``.
+    ``payload[6]`` is assumed to be ``dnd_enabled`` by analogy with the
+    generic (W5/CTW2) layout; this could not be exercised by the captures
+    (always 0) and may be re-validated when a CTW3 firmware response to
+    CMD 211 becomes available.
     """
     return [
         smart_work,
@@ -92,9 +100,9 @@ def build_settings_payload_ctw3(
         battery_work_time & 0xFF,
         (battery_sleep_time >> 8) & 0xFF,
         battery_sleep_time & 0xFF,
+        dnd_enabled,
         led_switch,
         led_brightness,
-        dnd_enabled,
         child_lock,
     ]
 

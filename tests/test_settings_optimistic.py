@@ -39,9 +39,9 @@ class TestConfigLoadedFlag:
         data = PetkitFountainData(alias=ALIAS_CTW3)
         # CTW3 settings layout (10 bytes):
         # [smart_work, smart_sleep, batt_work_hi, batt_work_lo,
-        #  batt_sleep_hi, batt_sleep_lo, led_switch, led_brightness,
-        #  dnd_enabled, child_lock]
-        payload = bytes([10, 15, 0, 60, 0, 30, 1, 5, 0, 0])
+        #  batt_sleep_hi, batt_sleep_lo, dnd_enabled, led_switch,
+        #  led_brightness, child_lock]
+        payload = bytes([10, 15, 0, 60, 0, 30, 0, 1, 5, 0])
         PetkitBleClient._parse_config_ctw3(data, payload)
         assert data.config_loaded is True
         assert data.led_switch == 1
