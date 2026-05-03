@@ -5,8 +5,9 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from dataclasses import dataclass
 from datetime import timedelta
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.bluetooth import (
     BluetoothChange,
@@ -17,7 +18,9 @@ from homeassistant.components.bluetooth import (
     async_scanner_count,
 )
 from homeassistant.core import callback
+from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import dt as dt_util
 
 if TYPE_CHECKING:
     from bleak.backends.device import BLEDevice
@@ -30,11 +33,192 @@ from .const import CONF_ADDRESS, CONF_DEVICE_SECRET, CONF_MODEL, CONF_NAME, DOMA
 
 _LOGGER = logging.getLogger(__name__)
 
+# Settings fields populated by CMD 211 and writable via CMD 221. When CMD 211
+# fails (e.g. CTW3 firmware 111 never responds to it), these would otherwise
+# stay at dataclass defaults and silently flip back after every poll, and any
+# CMD 221 write would zero out unrelated fields. We cache the last known value
+# of each on the coordinator and re-apply it onto fresh poll results so that
+# user writes persist across polls even when the device never replies to 211.
+_SETTINGS_FIELDS: tuple[str, ...] = (
+    "smart_time_on",
+    "smart_time_off",
+    "led_switch",
+    "led_brightness",
+    "do_not_disturb_switch",
+    "is_locked",
+    "battery_work_time",
+    "battery_sleep_time",
+    "led_on_minutes",
+    "led_off_minutes",
+    "dnd_start_minutes",
+    "dnd_end_minutes",
+)
+
 # How long to wait for a connectable advertisement before giving up. The proxy
 # emits adverts every ~500ms, but it can be unavailable for a few seconds while
 # it is mid-connect to another device. A 15s grace window covers that case
 # without significantly delaying genuine "device powered off" failures.
 CONNECTABLE_WAIT_TIMEOUT = 15.0
+
+
+def _reconcile_settings_into(
+    data: PetkitFountainData,
+    cache: dict[str, int],
+    *,
+    warned: bool,
+    name: str,
+    address: str,
+) -> bool:
+    """Pure helper for ``PetkitBleCoordinator._reconcile_settings``.
+
+    Mutates ``data`` and ``cache`` in place. Returns the new value of the
+    ``warned_no_config`` flag (True once we've emitted the warning).
+
+    Extracted as a free function so it can be unit-tested without
+    constructing a full coordinator (which inherits from
+    ``DataUpdateCoordinator`` and is awkward to instantiate).
+    """
+    if data.config_loaded:
+        for field in _SETTINGS_FIELDS:
+            cache[field] = getattr(data, field)
+        return warned
+    if cache:
+        for field, value in cache.items():
+            setattr(data, field, value)
+        data.config_loaded = True
+        return warned
+    if not warned:
+        _LOGGER.warning(
+            "CMD 211 (read settings) has not yet succeeded for %s (%s, alias=%s); "
+            "writing CMD 221 will use defaults for unread fields. The first "
+            "successful poll or user-driven write will populate the cache.",
+            name,
+            address,
+            data.alias,
+        )
+        return True
+    return warned
+
+
+# Byte indices in the CMD 210 payload that are known to change every poll
+# (running-uptime ms tick / sequence counter on CTW3 firmware 111). Excluded
+# from the diff log so the diff highlights only semantically-meaningful
+# changes — making it easy to spot which byte carries an event signal such
+# as pet-detection (see issue #65).
+_CTW3_NOISE_BYTES: frozenset[int] = frozenset(range(9, 19))
+
+
+def _diff_state_bytes(
+    prev: bytes,
+    curr: bytes,
+    *,
+    noisy: frozenset[int] = _CTW3_NOISE_BYTES,
+) -> list[tuple[int, int, int]]:
+    """Return ``(index, old, new)`` triples for bytes that changed.
+
+    Indices listed in ``noisy`` are skipped. When the two payloads have
+    different lengths the missing positions are treated as ``0x00`` so
+    appended/truncated bytes (e.g. the CTW3 tail at indices 26..29 that
+    appears only in 30-byte frames) are still reported.
+    """
+    if not prev:
+        return []
+    out: list[tuple[int, int, int]] = []
+    for i in range(max(len(prev), len(curr))):
+        if i in noisy:
+            continue
+        old = prev[i] if i < len(prev) else 0
+        new = curr[i] if i < len(curr) else 0
+        if old != new:
+            out.append((i, old, new))
+    return out
+
+
+@dataclass
+class _DrinkCountState:
+    """Mutable holder for the daily drink-event counter.
+
+    Lives on the coordinator across polls. Extracted into a small
+    dataclass so the counting and persistence logic can be unit-tested
+    via free functions (``_track_drink_event_into`` /
+    ``_load_drink_state_into``) without instantiating the full
+    ``DataUpdateCoordinator`` chain (which is awkward to mock).
+    """
+
+    prev_detect_status: int | None = None
+    count: int = 0
+    date_iso: str = ""
+
+
+async def _load_drink_state_into(state: _DrinkCountState, store: Any) -> None:
+    """Populate ``state`` from a ``Store`` snapshot if one exists.
+
+    Storage failures are swallowed at debug level — they must never block
+    integration setup. A persisted count from a previous day is dropped so
+    today's counter starts from zero.
+    """
+    try:
+        stored = await store.async_load()
+    except Exception as exc:
+        _LOGGER.debug("Failed to load drink-count store: %s", exc)
+        return
+    if not stored:
+        return
+    try:
+        count = int(stored.get("count", 0))
+        state.date_iso = str(stored.get("date") or state.date_iso)
+    except (TypeError, ValueError) as exc:
+        _LOGGER.debug("Discarding corrupt drink-count store: %s", exc)
+        return
+    # Defensive: a corrupt or hand-edited store could persist a negative
+    # count, which would surface as a negative sensor value. Discard it.
+    if count < 0:
+        _LOGGER.debug("Discarding negative drink-count from store: %d", count)
+        return
+    state.count = count
+    today_iso = dt_util.now().date().isoformat()
+    if state.date_iso != today_iso:
+        state.count = 0
+        state.date_iso = today_iso
+
+
+async def _track_drink_event_into(
+    state: _DrinkCountState,
+    store: Any,
+    data: PetkitFountainData,
+) -> None:
+    """Update ``state`` from a freshly polled ``data``; persist on change.
+
+    Increments on a ``detect_status`` 0 → 1 transition. Resets the counter
+    when the local date rolls over so the sensor is genuinely a per-day
+    counter. Always writes the current count back onto ``data`` so the
+    sensor reflects the latest value even when nothing changed.
+    """
+    today_iso = dt_util.now().date().isoformat()
+    if today_iso != state.date_iso:
+        _LOGGER.debug(
+            "Daily drink-count rollover %s → %s (was %d)",
+            state.date_iso,
+            today_iso,
+            state.count,
+        )
+        state.date_iso = today_iso
+        state.count = 0
+
+    cur_detect = data.detect_status
+    count_changed = False
+    if state.prev_detect_status is not None and state.prev_detect_status == 0 and cur_detect == 1:
+        state.count += 1
+        count_changed = True
+        _LOGGER.debug("Drink event detected (count=%d)", state.count)
+    state.prev_detect_status = cur_detect
+    data.drink_event_count = state.count
+
+    if count_changed:
+        try:
+            await store.async_save({"count": state.count, "date": state.date_iso})
+        except Exception as exc:
+            _LOGGER.debug("Failed to persist drink-count store: %s", exc)
 
 
 class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
@@ -56,9 +240,25 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
             _LOGGER.warning("Corrupted device secret for %s, treating as None", self._address)
             self._secret = None
 
-        # Track drink events across polls
-        self._prev_detect_status: int | None = None
-        self._drink_event_count: int = 0
+        # Track drink events across polls. The state is held in a small
+        # dataclass so the counting + persistence logic can live in free
+        # functions (testable without the full coordinator chain). The
+        # storage key uses ``config_entry.entry_id`` rather than the raw
+        # MAC because storage keys map to filenames under ``.storage/``
+        # and colons are invalid on some filesystems (notably Windows).
+        self._drink_state = _DrinkCountState(date_iso=dt_util.now().date().isoformat())
+        self._drink_store: Store = Store(hass, version=1, key=f"{DOMAIN}_drink_count_{config_entry.entry_id}")
+
+        # Cache for settings fields (CMD 211 / CMD 221). See _SETTINGS_FIELDS
+        # docstring for rationale. Populated either by a successful CMD 211
+        # parse or by an entity-driven write via apply_setting_optimistic().
+        self._settings_cache: dict[str, int] = {}
+        self._warned_no_config: bool = False
+
+        # Previous CMD 210 raw payload, kept so we can log a byte-by-byte
+        # diff between consecutive polls (see _diff_state_bytes). Used as a
+        # diagnostic aid for issue #65 (CTW3 detect_status offset unknown).
+        self._prev_raw_state: bytes = b""
 
         super().__init__(
             hass,
@@ -66,6 +266,18 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
             name=f"{DOMAIN}_{self._address}",
             update_interval=timedelta(seconds=POLL_INTERVAL),
         )
+
+    async def async_load_persistent_state(self) -> None:
+        """Load the persisted drink-event counter from disk.
+
+        Called once before the first refresh so a Home Assistant restart or
+        integration reload no longer wipes today's count to zero.
+        """
+        await _load_drink_state_into(self._drink_state, self._drink_store)
+
+    async def _track_drink_event(self, data: PetkitFountainData) -> None:
+        """Thin wrapper around ``_track_drink_event_into`` for the poll loop."""
+        await _track_drink_event_into(self._drink_state, self._drink_store, data)
 
     def _log_unreachable_diagnostics(self) -> None:
         """Emit a single diagnostic log line explaining why the device is not connectable.
@@ -202,6 +414,29 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
             "Polled %s: power=%s mode=%s firmware=%s", self._name, data.power_status, data.mode, data.firmware
         )
 
+        # Diagnostic: log changed bytes between consecutive CMD 210 polls.
+        # Only emitted when DEBUG logging is enabled. For CTW3, skip the
+        # noisy uptime/tick bytes 9..18 so the diff highlights semantic
+        # changes such as pet-detection events (issue #65). For W4/W5/CTW2
+        # the payload is only 12 bytes long and indices 9..11 carry
+        # meaningful state (pump_runtime tail, filter_percent,
+        # running_status) so we must not suppress them.
+        if _LOGGER.isEnabledFor(logging.DEBUG) and data.raw_state:
+            diff = _diff_state_bytes(
+                self._prev_raw_state,
+                data.raw_state,
+                noisy=_CTW3_NOISE_BYTES if data.is_ctw3 else frozenset(),
+            )
+            if diff:
+                _LOGGER.debug(
+                    "CMD 210 state diff for %s: %s",
+                    self._name,
+                    " ".join(f"byte[{i}]=0x{old:02x}->0x{new:02x}" for i, old, new in diff),
+                )
+            self._prev_raw_state = data.raw_state
+
+        self._reconcile_settings(data)
+
         # Self-heal persistence: if the BLE client inferred a corrected alias
         # from the CMD 210 payload (e.g. when the original entry stored a MAC
         # as CONF_MODEL), persist the corrected alias to the config entry so
@@ -221,14 +456,9 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
                 data={**self._config_entry.data, CONF_MODEL: data.alias},
             )
 
-        # Track drink events: detect_status transitions 0→1
-        # No pump check — in smart mode the pump may be off while pet drinks
-        cur_detect = data.detect_status
-        if self._prev_detect_status is not None and self._prev_detect_status == 0 and cur_detect == 1:
-            self._drink_event_count += 1
-            _LOGGER.debug("Drink event detected (count=%d)", self._drink_event_count)
-        self._prev_detect_status = cur_detect
-        data.drink_event_count = self._drink_event_count
+        # Track drink events. Counter resets daily and persists across
+        # restarts. See ``_track_drink_event`` for full rationale.
+        await self._track_drink_event(data)
 
         # RSSI from the most recent BLE advertisement (no connection required)
         service_info = async_last_service_info(self.hass, self._address, connectable=False)
@@ -236,6 +466,22 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
             data.rssi = service_info.rssi
 
         return data
+
+    def _reconcile_settings(self, data: PetkitFountainData) -> None:
+        """Reconcile the settings cache with a freshly polled data object.
+
+        Each ``async_poll`` constructs a brand-new ``PetkitFountainData``, so
+        any settings that were not refreshed by a CMD 211 response would
+        revert to dataclass defaults — visibly flipping switches back in the
+        UI and zeroing unrelated fields on the next CMD 221 write.
+        """
+        self._warned_no_config = _reconcile_settings_into(
+            data,
+            self._settings_cache,
+            warned=self._warned_no_config,
+            name=self._name,
+            address=self._address,
+        )
 
     async def async_send_command(self, cmd: int, data: list[int]) -> bool:
         """Send a single BLE command, serialised with the poll lock.
@@ -254,3 +500,26 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
                 )
                 return False
             return await client.async_send_command(cmd, data, self._alias, self._secret)
+
+    @callback
+    def apply_setting_optimistic(self, field: str, value: int) -> None:
+        """Persist a CMD 221 write into the live data and the settings cache.
+
+        Entities call this after a successful CMD 221 so that:
+          1. The live ``coordinator.data`` reflects the new value immediately
+             (so the UI does not flip back while waiting for the next poll).
+          2. The cache survives the dataclass replacement performed by the
+             next ``async_poll`` call. ``_async_update_data`` re-applies the
+             cache when CMD 211 fails to populate the field naturally.
+
+        ``async_set_updated_data`` is invoked so listeners (entities) refresh
+        their state without waiting on a network round trip.
+        """
+        if field not in _SETTINGS_FIELDS:
+            _LOGGER.debug("apply_setting_optimistic: unknown field %r ignored", field)
+            return
+        self._settings_cache[field] = value
+        if self.data is not None:
+            setattr(self.data, field, value)
+            self.data.config_loaded = True
+            self.async_set_updated_data(self.data)

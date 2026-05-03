@@ -237,6 +237,51 @@ Even as admin (bypassed protection), direct pushes skip CI and break the audit t
 
 ---
 
+## Releasing — promoting `dev` → `main`
+
+When promoting `dev` to `main` for a stable release, the `manifest.json`
+version **must be bumped to a new minor**, never just published with the
+trailing dev patch number. Each merge of `dev` into `main` represents a
+batch of user-visible changes accumulated during the dev cycle, and minor
+versions are the right granularity for "shipped to all HACS users".
+
+### Versioning rule (semver, minor-on-release)
+
+- While working on `dev`, patch increments (`1.1.x`) are used for each
+  fix/feature PR — that's what the `Pre-release` workflow tags as
+  `v1.1.x-dev.<timestamp>` for HACS beta testers.
+- **Before** opening the release PR, land a normal `chore/release-…` PR
+  into `dev` that bumps `custom_components/petkit_ble/manifest.json` to
+  the next minor (patch reset to `0`):
+  - `1.1.8` → `1.2.0`
+  - `1.2.2` → `1.3.0`
+  - `1.5.7` → `1.6.0`
+
+  The release workflow reads the version from `manifest.json`, so the
+  bump must already be on `dev` HEAD when the release PR is merged into
+  `main`. Use the existing `chore/*` branch prefix — no new branch
+  category is introduced for this step.
+- **Major version bumps** (`1.x.y` → `2.0.0`) are reserved for breaking
+  changes to the integration's user-facing config or entity model and
+  must be discussed with the user first.
+
+### Release PR checklist
+
+1. On `dev`, bump `manifest.json` `version` to the next minor.
+2. Commit: `chore(release): bump version to vX.Y.0` and push (via a normal
+   PR to `dev` — never direct push).
+3. Open release PR: `gh pr create --base main --head dev --title
+   "release: vX.Y.0 — <summary>"`.
+4. Wait for CI green and the Copilot review **submitted** (same gate as
+   feature PRs).
+5. Resolve any review comments.
+6. **Merge with a merge commit** (`gh pr merge <N> --merge`), **never
+   squash** — the dev PR history must be preserved on `main`.
+7. Verify `release.yml` published a non-prerelease `vX.Y.0` GitHub
+   Release.
+
+---
+
 ## Code Conventions
 
 - **Language**: All code, comments, docstrings, commit messages, PR titles & descriptions, and GitHub issues MUST be in **English**. This applies even when the user/contributor communicates in another language — only the chat reply to the user may be in their language; everything that lands in the repository or on GitHub is English.

@@ -148,10 +148,112 @@ class TestBuildSettingsPayloadCTW3:
         # battery_sleep_time = 600 = 0x0258
         assert result[4] == 0x02
         assert result[5] == 0x58
-        assert result[6] == 1  # led_switch
-        assert result[7] == 8  # led_brightness
-        assert result[8] == 1  # dnd_enabled
+        assert result[6] == 1  # dnd_enabled
+        assert result[7] == 1  # led_switch
+        assert result[8] == 8  # led_brightness
         assert result[9] == 1  # child_lock
+
+    def test_real_device_payload_decoding(self) -> None:
+        """Regression: payloads captured from a real CTW3 (fw 111).
+
+        The user toggled LED on, adjusted brightness, then toggled LED off
+        between 18:52:13 and 18:52:48 in the 2026-05-03 debug log. After
+        rotating the byte layout, the led_switch / led_brightness fields
+        encoded by the integration must match the expected sequence.
+        """
+        cases = [
+            # (led_switch, led_brightness, expected payload[6..9])
+            (1, 1, [0, 1, 1, 0]),
+            (0, 5, [0, 0, 5, 0]),
+            (1, 8, [0, 1, 8, 0]),
+            (1, 9, [0, 1, 9, 0]),
+            (0, 8, [0, 0, 8, 0]),
+        ]
+        for led_switch, led_brightness, expected_tail in cases:
+            payload = build_settings_payload_ctw3(
+                smart_work=0,
+                smart_sleep=0,
+                led_switch=led_switch,
+                led_brightness=led_brightness,
+                dnd_enabled=0,
+                child_lock=0,
+            )
+            assert payload[6:10] == expected_tail, (
+                f"led_switch={led_switch}, brightness={led_brightness}: got {payload[6:10]}, expected {expected_tail}"
+            )
+
+
+class TestParseConfigCtw3:
+    """Round-trip tests for _parse_config_ctw3.
+
+    Real-device CMD 211 payloads are not available (CTW3 fw 111 never
+    replies), so we synthesise payloads identical to what
+    build_settings_payload_ctw3 emits and verify the parser populates the
+    matching fields. This pins parser/builder symmetry.
+    """
+
+    def test_roundtrip_real_device_sequence(self) -> None:
+        """Captured user actions (LED on -> brightness changes -> LED off)."""
+        from custom_components.petkit_ble.ble_client import (
+            PetkitBleClient,
+            PetkitFountainData,
+        )
+
+        cases = [
+            (1, 1),
+            (0, 5),
+            (1, 8),
+            (1, 9),
+            (0, 8),
+        ]
+        for led_switch, led_brightness in cases:
+            payload = bytes(
+                build_settings_payload_ctw3(
+                    smart_work=0,
+                    smart_sleep=0,
+                    led_switch=led_switch,
+                    led_brightness=led_brightness,
+                    dnd_enabled=0,
+                    child_lock=0,
+                )
+            )
+            data = PetkitFountainData(alias="CTW3")
+            PetkitBleClient._parse_config_ctw3(data, payload)
+            assert data.led_switch == led_switch
+            assert data.led_brightness == led_brightness
+            assert data.do_not_disturb_switch == 0
+            assert data.is_locked == 0
+
+    def test_roundtrip_with_dnd_and_lock(self) -> None:
+        """All four boolean-ish fields round-trip through builder + parser."""
+        from custom_components.petkit_ble.ble_client import (
+            PetkitBleClient,
+            PetkitFountainData,
+        )
+
+        payload = bytes(
+            build_settings_payload_ctw3(
+                smart_work=7,
+                smart_sleep=11,
+                battery_work_time=300,
+                battery_sleep_time=600,
+                led_switch=1,
+                led_brightness=6,
+                dnd_enabled=1,
+                child_lock=1,
+            )
+        )
+        data = PetkitFountainData(alias="CTW3")
+        PetkitBleClient._parse_config_ctw3(data, payload)
+        assert data.smart_time_on == 7
+        assert data.smart_time_off == 11
+        assert data.battery_work_time == 300
+        assert data.battery_sleep_time == 600
+        assert data.do_not_disturb_switch == 1
+        assert data.led_switch == 1
+        assert data.led_brightness == 6
+        assert data.is_locked == 1
+        assert data.config_loaded is True
 
 
 class TestBuildModePayload:

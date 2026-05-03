@@ -57,7 +57,8 @@
       "firmware": {"name": "Прошивка"},
       "hardware_version": {"name": "Версія апаратного забезпечення"},
       "rssi": {"name": "Рівень сигналу"},
-      "drink_count": {"name": "Випадки пиття сьогодні"}
+      "drink_count": {"name": "Випадки пиття сьогодні"},
+      "state_tail_hex": {"name": "Хвіст стану CTW3 (hex)"}
     },
     "binary_sensor": {
       "pump_running": {"name": "Насос працює"},

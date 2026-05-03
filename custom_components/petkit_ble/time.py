@@ -120,6 +120,7 @@ class PetkitBleTime(PetkitBleEntity, TimeEntity):
         payload = build_full_settings_payload(data, **{self.entity_description.field_name: minutes})
         success = await self.coordinator.async_send_command(CMD_WRITE_SETTINGS, payload)
         if success:
+            self.coordinator.apply_setting_optimistic(self.entity_description.field_name, minutes)
             await self.coordinator.async_request_refresh()
         else:
             _LOGGER.error("Failed to set %s", self.entity_description.key)

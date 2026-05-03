@@ -154,6 +154,70 @@ class TestStateParsers:
         PetkitBleClient._parse_state_ctw3(data, bytes(buf))
         assert data.mode == 1
 
+    def test_parse_state_ctw3_captures_state_tail_when_30_bytes(self) -> None:
+        """30-byte CTW3 payload populates state_tail and raw_state.
+
+        The ground-truth log captured for issue #65 contains 30-byte frames
+        whose trailing four bytes (26..29) are not yet decoded but vary
+        between idle and post-drink samples — see plan.md.
+        """
+        # Synthesised from real CTW3 fw 111 frame at 12:14:57:
+        # raw=01010102000000000000245787080100009b3d00141a10736400c506be06
+        raw = bytes.fromhex("01010102000000000000245787080100009b3d00141a10736400c506be06")
+        data = PetkitFountainData(alias=ALIAS_CTW3)
+        PetkitBleClient._parse_state_ctw3(data, raw)
+        assert data.raw_state == raw
+        assert data.state_tail == bytes.fromhex("c506be06")
+        # All previously-known fields keep their meaning
+        assert data.power_status == 1
+        assert data.battery_percent == 100
+        assert data.filter_percent == 8
+
+    def test_parse_state_ctw3_state_tail_empty_for_26_byte_payload(self, sample_ctw3_state_payload: bytes) -> None:
+        """Older CTW3 firmware returns 26 bytes with no trailing tail."""
+        data = PetkitFountainData(alias=ALIAS_CTW3)
+        PetkitBleClient._parse_state_ctw3(data, sample_ctw3_state_payload)
+        assert data.raw_state == sample_ctw3_state_payload
+        assert data.state_tail == b""
+
+    def test_parse_state_ctw3_normalises_detect_status_value_2(self) -> None:
+        """CTW3 fw 111 emits ``0x02`` for "pet detected", not ``0x01``.
+
+        Regression test for issue #65: captured at 13:59:08 in
+        ``Logs/home-assistant_petkit_ble_2026-05-01T12-01-29.952Z.log`` while
+        the cat was visibly drinking. Without normalisation the drink-event
+        counter never increments because it requires a strict 0 → 1 transition.
+        """
+        raw = bytes.fromhex("01010102000000000000246fe907010000b39f02141a10766400c5068508")
+        assert raw[19] == 0x02  # the smoking gun
+
+        data = PetkitFountainData(alias=ALIAS_CTW3)
+        PetkitBleClient._parse_state_ctw3(data, raw)
+
+        assert data.detect_status == 1, "detect_status must be normalised to 0/1; raw byte 19 was 0x02"
+
+    def test_parse_state_ctw3_detect_status_zero_when_clear(self) -> None:
+        """Counterpart of the above: byte 19 = 0x00 → detect_status stays 0.
+
+        Captured at 14:00:17 (just after the cat moved away) — the
+        ``0x02 -> 0x00`` transition on byte 19 is what the binary sensor
+        observes when the device clears the detection flag.
+        """
+        raw = bytes.fromhex("0101010200000000000024702f07010000b3e500141410736400c506c706")
+        assert raw[19] == 0x00
+
+        data = PetkitFountainData(alias=ALIAS_CTW3)
+        PetkitBleClient._parse_state_ctw3(data, raw)
+
+        assert data.detect_status == 0
+
+    def test_parse_state_generic_does_not_set_state_tail(self, sample_generic_state_payload: bytes) -> None:
+        """Non-CTW3 payloads never populate the CTW3-specific tail."""
+        data = PetkitFountainData(alias=ALIAS_W5)
+        PetkitBleClient._parse_state_generic(data, sample_generic_state_payload)
+        assert data.raw_state == sample_generic_state_payload
+        assert data.state_tail == b""
+
     def test_parse_state_generic(self, sample_generic_state_payload: bytes) -> None:
         """Parse a generic state payload and verify fields."""
         data = PetkitFountainData(alias=ALIAS_W5)
@@ -207,9 +271,9 @@ class TestStateParsers:
         buf[1] = 7  # smart_sleep
         struct.pack_into(">H", buf, 2, 300)  # battery_work_time
         struct.pack_into(">H", buf, 4, 600)  # battery_sleep_time
-        buf[6] = 1  # led_switch
-        buf[7] = 5  # led_brightness
-        buf[8] = 1  # dnd_enabled
+        buf[6] = 1  # dnd_enabled
+        buf[7] = 1  # led_switch
+        buf[8] = 5  # led_brightness
         buf[9] = 0  # child_lock
 
         data = PetkitFountainData(alias=ALIAS_CTW3)

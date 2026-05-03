@@ -113,6 +113,28 @@ class PetkitFountainData:
     battery_work_time: int = 0
     battery_sleep_time: int = 0
 
+    # Raw CMD 210 payload as last received. Kept so the coordinator can log
+    # a byte-by-byte diff between consecutive polls — a diagnostic aid for
+    # reverse-engineering CTW3 fields whose offsets are not yet known
+    # (notably ``detect_status``; see issue #65).
+    raw_state: bytes = b""
+
+    # Bytes 26..29 of the CTW3 30-byte CMD 210 payload. Currently unparsed
+    # — exposed via a hidden diagnostic sensor so users can graph their
+    # behaviour while we narrow down which byte carries the real
+    # ``detect_status``. Always empty for non-CTW3 devices and for older
+    # CTW3 firmware that returns only 26 bytes.
+    state_tail: bytes = b""
+
+    # True once a CMD 211 (read settings) response has been parsed at least
+    # once for this entry. Some firmware revisions never reply to CMD 211
+    # (observed on CTW3 fw 111). When this flag is False, the cached
+    # settings fields are still at dataclass defaults — writing CMD 221
+    # would zero out smart-cycle / battery / DND / lock values on the
+    # device. protocol.build_full_settings_payload logs a one-shot warning
+    # in that case.
+    config_loaded: bool = False
+
     @property
     def is_ctw3(self) -> bool:
         """Return True if device uses the CTW3 extended state format."""
@@ -223,11 +245,18 @@ class PetkitBleClient:
         type_: int,
         data: list[int],
         timeout: float = 5.0,
+        *,
+        quiet: bool = False,
     ) -> bytes | None:
         """Send a command frame and wait for the matching response.
 
         Unsolicited notifications with a different cmd byte (e.g. CTW3 CMD 230
         extended state pushes) are discarded while waiting for the expected reply.
+
+        ``quiet=True`` demotes the per-poll timeout warning to DEBUG. Use it for
+        commands that are known to never reply on certain firmware revisions
+        (e.g. CMD 211 on CTW3 fw 111) so the log is not flooded; the higher
+        coordinator layer is responsible for surfacing the user-visible warning.
         """
         assert self._client is not None
         seq = self._next_seq()
@@ -236,15 +265,16 @@ class PetkitBleClient:
         _LOGGER.debug("TX CMD %d: %s", cmd, frame.hex())
         loop = asyncio.get_running_loop()
         deadline = loop.time() + timeout
+        log_timeout = _LOGGER.debug if quiet else _LOGGER.warning
         while True:
             remaining = deadline - loop.time()
             if remaining <= 0:
-                _LOGGER.warning("Timeout waiting for response to CMD %d", cmd)
+                log_timeout("Timeout waiting for response to CMD %d", cmd)
                 return None
             try:
                 raw = await asyncio.wait_for(self._rx_queue.get(), remaining)
             except TimeoutError:
-                _LOGGER.warning("Timeout waiting for response to CMD %d", cmd)
+                log_timeout("Timeout waiting for response to CMD %d", cmd)
                 return None
             parsed = self._parse_frame(raw)
             if parsed is None:
@@ -341,6 +371,11 @@ class PetkitBleClient:
         if len(payload) < 26:
             _LOGGER.warning("CTW3 state payload too short: %d bytes", len(payload))
             return
+        data.raw_state = bytes(payload)
+        # Bytes 26..29 are not yet decoded by this parser — see issue #65.
+        # Captured raw so the user (and future maintainers) can correlate
+        # them with observed pet-detection events via the diagnostic sensor.
+        data.state_tail = bytes(payload[26:30]) if len(payload) >= 30 else b""
         data.power_status = payload[0]
         data.suspend_status = payload[1]
         # The CTW3 firmware has been observed to transiently report mode=0 during
@@ -369,7 +404,11 @@ class PetkitBleClient:
         data.filter_percent = payload[13]
         data.running_status = payload[14]
         data.pump_runtime_today = struct.unpack_from(">I", payload, 15)[0]
-        data.detect_status = payload[19]
+        # Normalize to 0/1: CTW3 firmware 111 has been observed to use
+        # value 2 (not 1) when the proximity sensor sees a pet. Treating any
+        # non-zero value as "detected" makes the field future-proof against
+        # other bit patterns (issue #65).
+        data.detect_status = 1 if payload[19] else 0
         data.supply_voltage_mv = struct.unpack_from(">h", payload, 20)[0]
         data.battery_voltage_mv = struct.unpack_from(">h", payload, 22)[0]
         data.battery_percent = payload[24]
@@ -395,6 +434,7 @@ class PetkitBleClient:
         if len(payload) < 12:
             _LOGGER.warning("State payload too short: %d bytes", len(payload))
             return
+        data.raw_state = bytes(payload)
         data.power_status = payload[0]
         data.mode = payload[1]
         data.dnd_state = payload[2]
@@ -413,18 +453,25 @@ class PetkitBleClient:
 
     @staticmethod
     def _parse_config_ctw3(data: PetkitFountainData, payload: bytes) -> None:
-        """Parse CMD 211 response for CTW3."""
+        """Parse CMD 211 response for CTW3.
+
+        Layout matches build_settings_payload_ctw3 (idx 6=dnd, 7=led_switch,
+        8=led_brightness, 9=child_lock). Note: CTW3 firmware 111 never
+        actually replies to CMD 211, so this parser is currently unreached
+        on real hardware but kept symmetric with the builder.
+        """
         if len(payload) < 9:
             return
         data.smart_time_on = payload[0]
         data.smart_time_off = payload[1]
         data.battery_work_time = struct.unpack_from(">H", payload, 2)[0]
         data.battery_sleep_time = struct.unpack_from(">H", payload, 4)[0]
-        data.led_switch = payload[6]
-        data.led_brightness = payload[7]
-        data.do_not_disturb_switch = payload[8]
+        data.do_not_disturb_switch = payload[6]
+        data.led_switch = payload[7]
+        data.led_brightness = payload[8]
         if len(payload) >= 10:
             data.is_locked = payload[9]
+        data.config_loaded = True
 
     @staticmethod
     def _parse_config_generic(data: PetkitFountainData, payload: bytes) -> None:
@@ -444,6 +491,7 @@ class PetkitBleClient:
             data.dnd_end_minutes = struct.unpack_from(">H", payload, 11)[0]
         if len(payload) >= 14:
             data.is_locked = payload[13]
+        data.config_loaded = True
 
     # ------------------------------------------------------------------
     # Device initialization (first-time setup only)
@@ -531,7 +579,13 @@ class PetkitBleClient:
                     self._parse_state_generic(data, payload_210)
 
             # CMD 211 — device config (settings)
-            payload_211 = await self._send_and_wait(CMD_GET_CONFIG, FRAME_TYPE_SEND, [])
+            # CTW3 firmware 111 is known to never reply to CMD 211, so we
+            # demote the timeout to DEBUG for that alias to avoid flooding
+            # the log every minute. The coordinator still emits a single
+            # WARNING via _reconcile_settings_into() the first time, and
+            # the settings cache keeps user-set values intact across polls.
+            quiet_211 = data.alias in CTW3_ALIASES
+            payload_211 = await self._send_and_wait(CMD_GET_CONFIG, FRAME_TYPE_SEND, [], quiet=quiet_211)
             if payload_211 is not None:
                 if data.alias in CTW3_ALIASES:
                     self._parse_config_ctw3(data, payload_211)
