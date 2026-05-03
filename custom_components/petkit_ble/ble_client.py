@@ -453,16 +453,22 @@ class PetkitBleClient:
 
     @staticmethod
     def _parse_config_ctw3(data: PetkitFountainData, payload: bytes) -> None:
-        """Parse CMD 211 response for CTW3."""
+        """Parse CMD 211 response for CTW3.
+
+        Layout matches build_settings_payload_ctw3 (idx 6=dnd, 7=led_switch,
+        8=led_brightness, 9=child_lock). Note: CTW3 firmware 111 never
+        actually replies to CMD 211, so this parser is currently unreached
+        on real hardware but kept symmetric with the builder.
+        """
         if len(payload) < 9:
             return
         data.smart_time_on = payload[0]
         data.smart_time_off = payload[1]
         data.battery_work_time = struct.unpack_from(">H", payload, 2)[0]
         data.battery_sleep_time = struct.unpack_from(">H", payload, 4)[0]
-        data.led_switch = payload[6]
-        data.led_brightness = payload[7]
-        data.do_not_disturb_switch = payload[8]
+        data.do_not_disturb_switch = payload[6]
+        data.led_switch = payload[7]
+        data.led_brightness = payload[8]
         if len(payload) >= 10:
             data.is_locked = payload[9]
         data.config_loaded = True
