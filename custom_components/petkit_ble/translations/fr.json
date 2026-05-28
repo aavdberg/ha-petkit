@@ -1,0 +1,107 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configurer la fontaine à eau Petkit",
+        "description": "Sélectionnez une fontaine Petkit détectée automatiquement ou saisissez manuellement son adresse MAC Bluetooth.",
+        "data": {
+          "address": "Adresse MAC Bluetooth",
+          "name": "Nom de l'appareil (optionnel)"
+        }
+      },
+      "bluetooth_confirm": {
+        "title": "Confirmer la fontaine Petkit",
+        "description": "Voulez-vous configurer la fontaine **{name}** ({address}) ?"
+      },
+      "init_device": {
+        "title": "Initialiser l'appareil",
+        "description": "L'appareil **{name}** doit être initialisé. Cela va enregistrer une clé secrète sur l'appareil. **Attention :** Après l'initialisation, l'application PetKit ne pourra plus se connecter à cet appareil. Vous devrez réinitialiser l'appareil aux paramètres d'usine pour rétablir l'accès à l'application."
+      }
+    },
+    "error": {
+      "no_devices_found": "Aucune fontaine Petkit n'a été trouvée à proximité. Saisissez l'adresse MAC manuellement.",
+      "cannot_connect": "Impossible de se connecter à l'appareil. Assurez-vous qu'il est sous tension et à portée.",
+      "unknown": "Une erreur inattendue est survenue.",
+      "device_already_initialized": "L'appareil est déjà initialisé. Veuillez d'abord le réinitialiser aux paramètres d'usine (retirez le module de commande, maintenez le bouton d'alimentation enfoncé pendant 3 secondes jusqu'à ce que les LEDs clignotent).",
+      "init_failed": "Échec de l'initialisation de l'appareil. Veuillez réessayer."
+    },
+    "abort": {
+      "already_configured": "Cet appareil est déjà configuré.",
+      "no_devices_found": "Aucune fontaine Petkit n'a été trouvée.",
+      "device_already_initialized": "Cet appareil est déjà initialisé avec une clé secrète. Veuillez d'abord le réinitialiser aux paramètres d'usine (retirez le module de commande, maintenez le bouton d'alimentation enfoncé pendant 3 secondes jusqu'à ce que les LEDs clignotent), puis réessayez."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options Petkit BLE",
+        "data": {
+          "debug": "Activer le journal de débogage (debug)"
+        },
+        "data_description": {
+          "debug": "Enregistre chaque trame BLE (TX/RX) et étape d'authentification. Utile pour diagnostiquer les problèmes de connexion. À désactiver en production."
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "filter_percent": {"name": "Durée de vie du filtre"},
+      "pump_runtime_today": {"name": "Temps de fonctionnement de la pompe aujourd'hui"},
+      "pump_runtime": {"name": "Temps de fonctionnement total de la pompe"},
+      "battery_percent": {"name": "Batterie"},
+      "battery_voltage_mv": {"name": "Tension de la batterie"},
+      "water_purified_today": {"name": "Eau purifiée aujourd'hui"},
+      "energy_today": {"name": "Énergie aujourd'hui"},
+      "filter_days_remaining": {"name": "Jours restants avant changement du filtre"},
+      "firmware": {"name": "Firmware"},
+      "hardware_version": {"name": "Version matérielle"},
+      "rssi": {"name": "Force du signal (RSSI)"},
+      "drink_count": {"name": "Nombre de prises de boisson aujourd'hui"},
+      "state_tail_hex": {"name": "État final CTW3 (hex)"}
+    },
+    "binary_sensor": {
+      "pump_running": {"name": "Pompe en fonctionnement"},
+      "warning_water_missing": {"name": "Manque d'eau"},
+      "warning_filter": {"name": "Alerte filtre"},
+      "warning_breakdown": {"name": "Panne matérielle"},
+      "dnd_active": {"name": "Mode Ne pas déranger actif"},
+      "pet_detected": {"name": "Animal en train de boire"},
+      "on_ac_power": {"name": "Alimentation secteur"},
+      "low_battery": {"name": "Batterie faible"},
+      "suspended": {"name": "Pompe suspendue"},
+      "uvc_active": {"name": "Stérilisation UVC active"}
+    },
+    "button": {
+      "reset_filter": {"name": "Réinitialiser le filtre"}
+    },
+    "number": {
+      "smart_work_minutes": {"name": "Temps de fonctionnement (Mode Intelligent)"},
+      "smart_sleep_minutes": {"name": "Temps de pause (Mode Intelligent)"},
+      "led_brightness": {"name": "Luminosité des LEDs"},
+      "battery_work_seconds": {"name": "Durée de fonctionnement sur batterie"},
+      "battery_sleep_seconds": {"name": "Durée de pause sur batterie"}
+    },
+    "time": {
+      "led_on_time": {"name": "Heure d'allumage des LEDs"},
+      "led_off_time": {"name": "Heure d'extinction des LEDs"},
+      "dnd_start_time": {"name": "Heure de début Ne pas déranger"},
+      "dnd_end_time": {"name": "Heure de fin Ne pas déranger"}
+    },
+    "select": {
+      "mode": {
+        "name": "Mode",
+        "state": {
+          "normal": "Normal",
+          "smart": "Intelligent (Smart)"
+        }
+      }
+    },
+    "switch": {
+      "power": {"name": "Alimentation"},
+      "led": {"name": "LED"},
+      "do_not_disturb": {"name": "Ne pas déranger"},
+      "child_lock": {"name": "Verrouillage enfant"}
+    }
+  }
+}
