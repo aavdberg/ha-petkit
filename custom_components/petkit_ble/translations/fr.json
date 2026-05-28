@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Configurer la fontaine à eau Petkit",
-        "description": "Sélectionnez une fontaine Petkit détectée ou saisissez manuellement son adresse MAC Bluetooth.",
+        "description": "Sélectionnez une fontaine Petkit détectée automatiquement ou saisissez manuellement son adresse MAC Bluetooth.",
         "data": {
           "address": "Adresse MAC Bluetooth",
           "name": "Nom de l'appareil (optionnel)"
