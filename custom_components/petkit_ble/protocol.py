@@ -29,6 +29,18 @@ def build_time_sync_payload() -> list[int]:
     ]
 
 
+def parse_device_id(payload: bytes) -> int:
+    """Read the 8-byte device id from a CMD 213 response (big-endian).
+
+    Must use the same byte order as ``build_init_payload`` so a device's id
+    round-trips when re-pairing an already-bound device (issue #75). Returns 0
+    (uninitialised) when the payload is too short.
+    """
+    if len(payload) < 8:
+        return 0
+    return int.from_bytes(payload[:8], "big")
+
+
 def build_init_payload(device_id: int, secret: bytes) -> list[int]:
     """Build the 16-byte payload for CMD 73 (device init).
 
