@@ -42,7 +42,7 @@ from .const import (
     KNOWN_ALIASES,
     POWER_COEFF_W,
 )
-from .protocol import build_init_payload, build_time_sync_payload
+from .protocol import build_init_payload, build_time_sync_payload, parse_device_id
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -507,7 +507,7 @@ class PetkitBleClient:
             payload = await self._send_and_wait(CMD_GET_DEVICE_INFO, FRAME_TYPE_SEND, [])
             if payload is None or len(payload) < 8:
                 return False, 0
-            device_id = int.from_bytes(payload[:8], "little")
+            device_id = parse_device_id(payload)
             return device_id != 0, device_id
         finally:
             await self.disconnect()

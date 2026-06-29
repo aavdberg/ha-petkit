@@ -111,6 +111,35 @@ A ready-made dashboard YAML is included in [`docs/dashboard.yaml`](docs/dashboar
 
 ---
 
+## Troubleshooting
+
+### "This device is already initialized with a secret" / re-pair loop
+
+Each fountain stores a pairing **secret**. The first time you add a device, the
+integration registers a random secret with it; on later connections it
+authenticates with that stored secret. A device that was previously paired —
+with the PetKit app, or with an earlier Home Assistant setup whose secret was
+lost — already holds a secret.
+
+When this happens the config flow shows a **"Device Already Paired"** step
+instead of failing, offering **Re-pair now** or **Cancel**. Choosing
+**Re-pair now** registers a fresh secret with the device. This overwrites the
+existing pairing, so:
+
+- The PetKit app will no longer connect to the fountain until you factory reset it.
+- Only one controller (the app **or** Home Assistant) owns the device at a time.
+
+If re-pairing keeps failing, bring the fountain closer to the Bluetooth adapter
+(or proxy) and retry. As a last resort, factory reset the device: detach the
+control module, hold the power button for ~3 seconds until the LEDs flash, then
+add it again.
+
+> Older releases dead-ended here with an "already initialized, factory reset
+> first" error even though a reset often did not clear the binding. The re-pair
+> step replaces that loop.
+
+---
+
 ## Protocol Notes
 
 Communication uses a proprietary BLE protocol over two GATT characteristics (notify + write-without-response). Authentication is required on every connection.

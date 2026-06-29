@@ -16,6 +16,14 @@
       "init_device": {
         "title": "Initialize Device",
         "description": "The device **{name}** needs to be initialized. This will register a secret with the device. **Warning:** After initialization, the PetKit app will no longer be able to connect to this device. You can factory reset the device to restore app access."
+      },
+      "confirm_repair": {
+        "title": "Device Already Paired",
+        "description": "**{name}** is already paired — most likely with the PetKit app, or with a previous Home Assistant setup whose secret was lost. To control it from Home Assistant you must re-pair it with a new secret. This **overwrites the existing pairing**: the PetKit app won't connect until you factory reset the fountain, and the two can't control it at the same time.",
+        "menu_options": {
+          "repair_confirm": "Re-pair now (replaces the existing pairing)",
+          "repair_cancel": "Cancel — leave the device untouched"
+        }
       }
     },
     "error": {
@@ -28,7 +36,9 @@
     "abort": {
       "already_configured": "This device is already configured.",
       "no_devices_found": "No Petkit fountains were found.",
-      "device_already_initialized": "This device is already initialized with a secret. Please factory reset it first (detach control module, hold power button for 3 seconds until LEDs flash), then try again."
+      "device_already_initialized": "This device is already initialized with a secret. Please factory reset it first (detach control module, hold power button for 3 seconds until LEDs flash), then try again.",
+      "repair_failed": "Could not re-pair the device. Bring it closer and try again; if it keeps failing, factory reset it (detach control module, hold power button 3 seconds until LEDs flash), then re-add it.",
+      "repair_cancelled": "Re-pairing cancelled. The device was left untouched."
     }
   },
   "options": {
