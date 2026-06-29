@@ -38,7 +38,8 @@
       "no_devices_found": "Er zijn geen Petkit-fonteintjes gevonden.",
       "device_already_initialized": "Dit apparaat is al geïnitialiseerd met een geheim. Reset het apparaat eerst naar fabrieksinstellingen (verwijder de bedieningsmodule, houd de aan/uit-knop 3 seconden ingedrukt totdat de LED's knipperen) en probeer het opnieuw.",
       "repair_failed": "Opnieuw koppelen is mislukt. Breng het apparaat dichterbij en probeer het opnieuw; als het blijft mislukken, zet het terug naar fabrieksinstellingen (verwijder de besturingsmodule, houd de aan/uit-knop 3 seconden ingedrukt tot de LED's knipperen) en voeg het opnieuw toe.",
-      "repair_cancelled": "Opnieuw koppelen geannuleerd. Het apparaat is ongemoeid gelaten."
+      "repair_cancelled": "Opnieuw koppelen geannuleerd. Het apparaat is ongemoeid gelaten.",
+      "unsupported_device": "Dit apparaatmodel wordt mogelijk niet volledig ondersteund door deze integratie. Rapporteer dit probleem alstublieft op GitHub met uw apparaatmodel en logboeken."
     }
   },
   "options": {

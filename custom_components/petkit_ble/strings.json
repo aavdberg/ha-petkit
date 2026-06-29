@@ -38,7 +38,8 @@
       "no_devices_found": "No Petkit fountains were found.",
       "device_already_initialized": "This device is already initialized with a secret. Please factory reset it first (detach control module, hold power button for 3 seconds until LEDs flash), then try again.",
       "repair_failed": "Could not re-pair the device. Bring it closer and try again; if it keeps failing, factory reset it (detach control module, hold power button 3 seconds until LEDs flash), then re-add it.",
-      "repair_cancelled": "Re-pairing cancelled. The device was left untouched."
+      "repair_cancelled": "Re-pairing cancelled. The device was left untouched.",
+      "unsupported_device": "This device model may not be fully supported by this integration. Please report this issue on GitHub with your device model and logs."
     }
   }
 }
