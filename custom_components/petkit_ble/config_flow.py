@@ -37,7 +37,14 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def _get_alias_from_name(name: str) -> str:
-    """Derive the device alias from its BLE advertisement name."""
+    """Derive the device alias from its BLE advertisement name.
+
+    Returns one of the known ``ALIAS_*`` constants when the BLE name contains
+    a recognisable model token. Returns an empty string when no model can be
+    determined — for example when the proxy advert delivered no local name
+    and the user only provided the MAC. The runtime then self-heals the alias
+    on the first successful poll based on the CMD 210 payload length.
+    """
     if "CTW3" in name:
         return ALIAS_CTW3
     if "CTW2" in name:
@@ -52,7 +59,7 @@ def _get_alias_from_name(name: str) -> str:
         return ALIAS_W4X
     if "W5" in name:
         return ALIAS_W5
-    return name
+    return ""
 
 
 def _is_petkit_device(name: str) -> bool:

@@ -135,6 +135,14 @@ SENSOR_DESCRIPTIONS: tuple[PetkitSensorEntityDescription, ...] = (
         value_fn=lambda d: d.drink_event_count,
         available_fn=lambda d: d.is_ctw3,
     ),
+    PetkitSensorEntityDescription(
+        key="state_tail_hex",
+        translation_key="state_tail_hex",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        value_fn=lambda d: d.state_tail.hex() if d.state_tail else None,
+        available_fn=lambda d: d.is_ctw3 and bool(d.state_tail),
+    ),
 )
 
 

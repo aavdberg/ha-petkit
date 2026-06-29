@@ -201,27 +201,90 @@ Every change — no matter how small — **must** follow these steps in order:
    git push -u origin fix/my-fix
    gh pr create --base dev --head fix/my-fix --title "..." --body "..."
    ```
-7. **CI** — Wait for all CI checks to pass (ruff lint, ruff format, HACS validation).
-8. **Review** — After CI passes, check the Copilot code review on the PR:
+7. **CI** — Wait for all CI checks to pass (ruff lint, ruff format, HACS validation,
+   and the "Request Copilot Code Review" workflow).
+8. **Review** — After CI passes, **wait for the Copilot code review to actually be
+   submitted** before merging. The "Request Copilot Code Review" workflow only
+   *triggers* the review; the review comments arrive asynchronously a short time
+   later. Verify the review has been submitted by polling:
+   ```
+   gh pr view <N> --json reviews -q '.reviews[] | select(.author.login=="copilot-pull-request-reviewer") | .submittedAt'
+   ```
+   (Or use the GitHub API `get_reviews` / `get_review_comments` methods.)
+   Only proceed when the review is present. Then:
    - Retrieve all review comments using the GitHub API / `gh` CLI.
    - If there are comments or suggestions, **fix them** in a new commit on the same branch.
    - Reply to each review thread explaining what was fixed.
    - **Resolve** all review threads (using GraphQL `resolveReviewThread` mutation).
-   - Push the fixes and wait for CI to pass again.
+   - Push the fixes and wait for CI to pass again, then re-check the review.
    - Repeat until there are no unresolved comments.
 9. **Merge** — Once CI passes and all review comments are resolved, merge the PR into `dev`:
    ```
    gh pr merge <PR_NUMBER> --squash --delete-branch
    ```
+10. **Verify dev pre-release** — After the merge, confirm that the `Pre-release`
+    workflow created a new `v<version>-dev.<timestamp>` tag/release on `dev`:
+    ```
+    gh run list --workflow pre-release.yml --limit 1
+    gh release list --limit 3
+    ```
+    If the workflow did not run or failed, investigate before moving on. This
+    pre-release is what HACS beta-testers install, so missing it silently breaks
+    their update path.
 
 **NEVER commit or push directly to `dev` or `main`.**  
 Even as admin (bypassed protection), direct pushes skip CI and break the audit trail.
 
 ---
 
+## Releasing — promoting `dev` → `main`
+
+When promoting `dev` to `main` for a stable release, the `manifest.json`
+version **must be bumped to a new minor**, never just published with the
+trailing dev patch number. Each merge of `dev` into `main` represents a
+batch of user-visible changes accumulated during the dev cycle, and minor
+versions are the right granularity for "shipped to all HACS users".
+
+### Versioning rule (semver, minor-on-release)
+
+- While working on `dev`, patch increments (`1.1.x`) are used for each
+  fix/feature PR — that's what the `Pre-release` workflow tags as
+  `v1.1.x-dev.<timestamp>` for HACS beta testers.
+- **Before** opening the release PR, land a normal `chore/release-…` PR
+  into `dev` that bumps `custom_components/petkit_ble/manifest.json` to
+  the next minor (patch reset to `0`):
+  - `1.1.8` → `1.2.0`
+  - `1.2.2` → `1.3.0`
+  - `1.5.7` → `1.6.0`
+
+  The release workflow reads the version from `manifest.json`, so the
+  bump must already be on `dev` HEAD when the release PR is merged into
+  `main`. Use the existing `chore/*` branch prefix — no new branch
+  category is introduced for this step.
+- **Major version bumps** (`1.x.y` → `2.0.0`) are reserved for breaking
+  changes to the integration's user-facing config or entity model and
+  must be discussed with the user first.
+
+### Release PR checklist
+
+1. On `dev`, bump `manifest.json` `version` to the next minor.
+2. Commit: `chore(release): bump version to vX.Y.0` and push (via a normal
+   PR to `dev` — never direct push).
+3. Open release PR: `gh pr create --base main --head dev --title
+   "release: vX.Y.0 — <summary>"`.
+4. Wait for CI green and the Copilot review **submitted** (same gate as
+   feature PRs).
+5. Resolve any review comments.
+6. **Merge with a merge commit** (`gh pr merge <N> --merge`), **never
+   squash** — the dev PR history must be preserved on `main`.
+7. Verify `release.yml` published a non-prerelease `vX.Y.0` GitHub
+   Release.
+
+---
+
 ## Code Conventions
 
-- **Language**: All code comments, docstrings, commit messages, and documentation in **English**.
+- **Language**: All code, comments, docstrings, commit messages, PR titles & descriptions, and GitHub issues MUST be in **English**. This applies even when the user/contributor communicates in another language — only the chat reply to the user may be in their language; everything that lands in the repository or on GitHub is English.
 - **Python**: 3.12+, type hints required, `from __future__ import annotations` in every module.
 - **Imports**: Use `from collections.abc import Callable` (not `from typing import Callable`).
 - **Linter**: ruff — run `ruff check custom_components/` before committing.

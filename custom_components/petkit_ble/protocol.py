@@ -82,8 +82,16 @@ def build_settings_payload_ctw3(
     """Build the payload for CMD 221 (write settings) for CTW3 devices.
 
     Layout: [smart_work, smart_sleep, batt_work_hi, batt_work_lo,
-             batt_sleep_hi, batt_sleep_lo, led_switch, led_brightness,
-             dnd_enabled, child_lock]
+             batt_sleep_hi, batt_sleep_lo, dnd_enabled, led_switch,
+             led_brightness, child_lock]
+
+    Reverse-engineered from real-device CMD 221 captures:
+    confirmed user actions ``LED on -> brightness 1/8/9 -> LED off`` map
+    cleanly to ``payload[7] = led_switch`` and ``payload[8] = led_brightness``.
+    ``payload[6]`` is assumed to be ``dnd_enabled`` by analogy with the
+    generic (W5/CTW2) layout; this could not be exercised by the captures
+    (always 0) and may be re-validated when a CTW3 firmware response to
+    CMD 211 becomes available.
     """
     return [
         smart_work,
@@ -92,9 +100,9 @@ def build_settings_payload_ctw3(
         battery_work_time & 0xFF,
         (battery_sleep_time >> 8) & 0xFF,
         battery_sleep_time & 0xFF,
+        dnd_enabled,
         led_switch,
         led_brightness,
-        dnd_enabled,
         child_lock,
     ]
 
@@ -157,3 +165,21 @@ def build_ctw3_mode_payload(power: int, suspend: int, mode: int) -> list[int]:
     if power == 0:
         suspend = 0
     return [power, suspend, mode]
+
+
+def build_ctw3_select_mode_payload(mode: int) -> list[int]:
+    """Build a CMD 220 payload for a user mode-select on CTW3.
+
+    Selecting a mode in the HA UI always implies power=1: the user expects
+    that mode to *run*. We deliberately ignore the cached ``power_status``
+    here because byte[0] of CMD 210 can momentarily be reported as 0 while
+    the device is in smart-mode sleep cycle. Coupling the mode select to
+    that cached value caused Smart→Normal to silently send [0, 0, 1] and
+    leave the pump off.
+
+    Returns:
+      - Normal (mode=1): [1, 1, 1]  (power on, pump active)
+      - Smart  (mode=2): [1, 0, 2]  (power on, timer-managed)
+    """
+    suspend = 1 if mode == 1 else 0
+    return build_ctw3_mode_payload(1, suspend, mode)

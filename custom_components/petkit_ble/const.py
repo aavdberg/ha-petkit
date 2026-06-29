@@ -70,6 +70,25 @@ PETKIT_NAME_PREFIXES = (
 # Aliases that use the CTW3 26-byte state format
 CTW3_ALIASES = {ALIAS_CTW3}
 
+# Every known alias. Used to detect entries whose CONF_MODEL was stored as
+# something else (e.g. a MAC address — see issue: alias self-heal) so that
+# the runtime can infer the real model from the BLE response and persist it.
+KNOWN_ALIASES = {
+    ALIAS_CTW3,
+    ALIAS_CTW2,
+    ALIAS_W5C,
+    ALIAS_W5N,
+    ALIAS_W5,
+    ALIAS_W4XUVC,
+    ALIAS_W4X,
+}
+
+# CMD 210 payload length threshold used to identify a CTW3. Generic devices
+# return 12-18 bytes; CTW3 devices require at least 26 bytes for the CTW3
+# state parser to succeed, so only payloads of 26 bytes or more should infer
+# the CTW3 model.
+CTW3_STATE_PAYLOAD_MIN_LEN = 26
+
 # Poll interval in seconds
 POLL_INTERVAL = 60
 

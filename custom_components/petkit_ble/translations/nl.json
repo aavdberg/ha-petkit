@@ -57,7 +57,8 @@
       "firmware": {"name": "Firmware"},
       "hardware_version": {"name": "Hardwareversie"},
       "rssi": {"name": "Signaalsterkte"},
-      "drink_count": {"name": "Drinkgebeurtenissen vandaag"}
+      "drink_count": {"name": "Drinkgebeurtenissen vandaag"},
+      "state_tail_hex": {"name": "CTW3 statestaart (hex)"}
     },
     "binary_sensor": {
       "pump_running": {"name": "Pomp actief"},
