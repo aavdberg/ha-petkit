@@ -9,6 +9,9 @@ jobs:
   copilot-review:
     name: Request Copilot Code Review
     runs-on: ubuntu-latest
+    # Skip PRs from forks: the pull_request event grants a read-only
+    # GITHUB_TOKEN for forked PRs, so requestReviewers returns 403.
+    if: github.event.pull_request.head.repo.full_name == github.repository
     permissions:
       pull-requests: write
     steps:
