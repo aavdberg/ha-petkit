@@ -104,7 +104,6 @@ SENSOR_DESCRIPTIONS: tuple[PetkitSensorEntityDescription, ...] = (
         key="energy_today_wh",
         translation_key="energy_today_wh",
         native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,
-        state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
         value_fn=lambda d: round(d.energy_today_wh, 3),
     ),
