@@ -64,6 +64,7 @@
       "battery_voltage_mv": {"name": "Tension de la batterie"},
       "water_purified_today": {"name": "Eau purifiée aujourd'hui"},
       "energy_today": {"name": "Énergie aujourd'hui"},
+      "energy_today_wh": {"name": "Énergie aujourd'hui (Wh)"},
       "filter_days_remaining": {"name": "Jours restants avant changement du filtre"},
       "firmware": {"name": "Firmware"},
       "hardware_version": {"name": "Version matérielle"},

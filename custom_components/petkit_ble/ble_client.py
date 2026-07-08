@@ -172,6 +172,11 @@ class PetkitFountainData:
         coeff = POWER_COEFF_W.get(self.alias, DEFAULT_POWER_COEFF_W)
         return coeff * self.pump_runtime_today / 3600 / 1000
 
+    @property
+    def energy_today_wh(self) -> float:
+        """Estimated energy used today in Wh (readable form of ``energy_today_kwh``)."""
+        return self.energy_today_kwh * 1000
+
 
 class PetkitBleClient:
     """BLE client for Petkit water fountains implementing the Petkit protocol."""
