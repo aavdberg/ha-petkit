@@ -303,19 +303,7 @@ class PetkitBleClient:
             self._device,
             self._device.address,
         )
-        try:
-            await self._client.start_notify(BLE_NOTIFY_UUID, self._on_notify)
-        except BleakCharacteristicNotFoundError:
-            # Some models (e.g. W4X) don't expose the notify characteristic.
-            # Responses are only delivered via notifications, so we cannot
-            # communicate at all — re-raise so callers can abort/handle
-            # explicitly (config_flow aborts with "unsupported_device").
-            _LOGGER.warning(
-                "Device %s does not expose notify UUID %s; the model is not supported",
-                self._device.address,
-                BLE_NOTIFY_UUID,
-            )
-            raise
+        await self._start_notify_with_cache_retry()
 
         self._rx_buf.clear()
         # Discard any stale notifications from a previous connection
@@ -324,6 +312,63 @@ class PetkitBleClient:
         self._seq = 0
         # Allow device time to settle before sending first command
         await asyncio.sleep(0.5)
+
+    async def _start_notify_with_cache_retry(self) -> None:
+        """Subscribe to notifications, refreshing a stale GATT cache on failure.
+
+        The notify characteristic can be missing from the cached GATT database
+        even when the device does expose it — for example when the device is
+        still bonded to another client (the Petkit app) or when the OS / ESPHome
+        proxy holds a stale cached service table. Research confirms the W4X is
+        part of the W5 family and does expose notify UUID ``0000aaa1``, so a
+        missing characteristic is treated as a possibly-stale cache first: clear
+        the cache, reconnect to force a fresh service discovery, and retry once
+        before reporting the model as unsupported.
+        """
+        try:
+            await self._client.start_notify(BLE_NOTIFY_UUID, self._on_notify)
+            return
+        except BleakCharacteristicNotFoundError:
+            _LOGGER.warning(
+                "Notify UUID %s not found for %s; clearing GATT cache and retrying service discovery",
+                BLE_NOTIFY_UUID,
+                self._device.address,
+            )
+
+        await self._clear_cache_and_reconnect()
+
+        try:
+            await self._client.start_notify(BLE_NOTIFY_UUID, self._on_notify)
+        except BleakCharacteristicNotFoundError:
+            # Responses are only delivered via notifications, so without this
+            # characteristic we cannot communicate at all — re-raise so callers
+            # can abort/handle explicitly (config_flow aborts with
+            # "unsupported_device").
+            _LOGGER.warning(
+                "Device %s still does not expose notify UUID %s after a GATT cache refresh; the model is not supported",
+                self._device.address,
+                BLE_NOTIFY_UUID,
+            )
+            raise
+
+    async def _clear_cache_and_reconnect(self) -> None:
+        """Clear the GATT cache and re-establish the connection to rediscover.
+
+        ``clear_cache`` is not available on every bleak backend / ESPHome-proxy
+        client, so it is guarded; when absent, the disconnect + reconnect alone
+        often refreshes the cached service table.
+        """
+        if self._client is not None:
+            if hasattr(self._client, "clear_cache"):
+                with contextlib.suppress(Exception):
+                    await self._client.clear_cache()
+            with contextlib.suppress(Exception):
+                await self._client.disconnect()
+        self._client = await establish_connection(
+            BleakClient,
+            self._device,
+            self._device.address,
+        )
 
     async def disconnect(self) -> None:
         """Disconnect from the device, suppressing cleanup errors."""
