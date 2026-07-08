@@ -16,6 +16,14 @@
       "init_device": {
         "title": "Apparaat initialiseren",
         "description": "Het apparaat **{name}** moet worden geïnitialiseerd. Dit registreert een geheim bij het apparaat. **Waarschuwing:** Na initialisatie kan de PetKit-app niet meer verbinden met dit apparaat. Je kunt het apparaat terugzetten naar fabrieksinstellingen om app-toegang te herstellen."
+      },
+      "confirm_repair": {
+        "title": "Apparaat al gekoppeld",
+        "description": "**{name}** is al gekoppeld — waarschijnlijk met de PetKit-app, of met een eerdere Home Assistant-installatie waarvan het geheim verloren is gegaan. Om het vanuit Home Assistant te bedienen moet je het opnieuw koppelen met een nieuw geheim. Dit **overschrijft de bestaande koppeling**: de PetKit-app kan niet meer verbinden totdat je het apparaat terugzet naar fabrieksinstellingen, en beide kunnen het niet tegelijk bedienen.",
+        "menu_options": {
+          "repair_confirm": "Nu opnieuw koppelen (vervangt de bestaande koppeling)",
+          "repair_cancel": "Annuleren — apparaat ongemoeid laten"
+        }
       }
     },
     "error": {
@@ -28,7 +36,10 @@
     "abort": {
       "already_configured": "Dit apparaat is al geconfigureerd.",
       "no_devices_found": "Er zijn geen Petkit-fonteintjes gevonden.",
-      "device_already_initialized": "Dit apparaat is al geïnitialiseerd met een geheim. Reset het apparaat eerst naar fabrieksinstellingen (verwijder de bedieningsmodule, houd de aan/uit-knop 3 seconden ingedrukt totdat de LED's knipperen) en probeer het opnieuw."
+      "device_already_initialized": "Dit apparaat is al geïnitialiseerd met een geheim. Reset het apparaat eerst naar fabrieksinstellingen (verwijder de bedieningsmodule, houd de aan/uit-knop 3 seconden ingedrukt totdat de LED's knipperen) en probeer het opnieuw.",
+      "repair_failed": "Opnieuw koppelen is mislukt. Breng het apparaat dichterbij en probeer het opnieuw; als het blijft mislukken, zet het terug naar fabrieksinstellingen (verwijder de besturingsmodule, houd de aan/uit-knop 3 seconden ingedrukt tot de LED's knipperen) en voeg het opnieuw toe.",
+      "repair_cancelled": "Opnieuw koppelen geannuleerd. Het apparaat is ongemoeid gelaten.",
+      "unsupported_device": "Dit apparaatmodel wordt mogelijk niet volledig ondersteund door deze integratie. Rapporteer dit probleem alstublieft op GitHub met uw apparaatmodel en logboeken."
     }
   },
   "options": {

@@ -18,6 +18,7 @@ from custom_components.petkit_ble.protocol import (
     build_settings_payload_ctw3,
     build_settings_payload_generic,
     build_time_sync_payload,
+    parse_device_id,
 )
 
 
@@ -76,6 +77,34 @@ class TestBuildInitPayload:
         """A short secret is right-padded with zeros."""
         result = build_init_payload(0, b"\x01\x02\x03")
         assert bytes(result[8:16]) == b"\x01\x02\x03\x00\x00\x00\x00\x00"
+
+
+class TestParseDeviceId:
+    """Tests for parse_device_id and its round-trip with build_init_payload."""
+
+    def test_zero_for_short_payload(self) -> None:
+        """A payload shorter than 8 bytes reads as uninitialised (0)."""
+        assert parse_device_id(b"\x01\x02\x03") == 0
+
+    def test_zero_device_id(self) -> None:
+        """All-zero id bytes mean the device is uninitialised."""
+        assert parse_device_id(bytes(8) + b"SERIAL") == 0
+
+    def test_big_endian_read(self) -> None:
+        """The 8 id bytes are read big-endian."""
+        assert parse_device_id(b"\x00\x00\x00\x00\x00\x00\x30\x39") == 0x3039
+
+    def test_roundtrip_with_build_init_payload(self) -> None:
+        """Re-pairing must send back the device's own id bytes verbatim.
+
+        parse_device_id and build_init_payload must agree on byte order, else a
+        non-zero device id would be byte-swapped on re-init (issue #75).
+        """
+        raw_id = b"\x12\x34\x56\x78\x9a\xbc\xde\xf0"
+        payload = raw_id + b"SN-12345"
+        device_id = parse_device_id(payload)
+        rebuilt = build_init_payload(device_id, b"\xaa" * 8)
+        assert bytes(rebuilt[:8]) == raw_id
 
 
 class TestBuildSettingsPayloadGeneric:
