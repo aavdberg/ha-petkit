@@ -36,6 +36,7 @@ _HA_STUBS = [
     "bleak",
     "bleak.backends",
     "bleak.backends.device",
+    "bleak.exc",
     "bleak_retry_connector",
     "voluptuous",
 ]
