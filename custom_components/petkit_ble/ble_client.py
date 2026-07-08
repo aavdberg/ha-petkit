@@ -147,6 +147,28 @@ class PetkitFountainData:
         return self.running_status == 1
 
     @property
+    def is_on_ac_power(self) -> bool:
+        """Return True when the fountain is powered from AC (mains).
+
+        AC-only models (W4/W5/CTW2) are always mains-powered. Battery-capable
+        models (CTW3) report ``electric_status == 2`` when running on AC.
+        """
+        if not self.is_ctw3:
+            return True
+        return self.electric_status == 2
+
+    @property
+    def power_w(self) -> float:
+        """Instantaneous power draw in watts.
+
+        Only reported while the pump is running and the device is on AC power;
+        on battery (CTW3) or when idle the draw from the mains is 0 W.
+        """
+        if not self.is_pump_running or not self.is_on_ac_power:
+            return 0.0
+        return POWER_COEFF_W.get(self.alias, DEFAULT_POWER_COEFF_W)
+
+    @property
     def filter_days_remaining(self) -> int:
         """Estimate remaining filter life in days."""
         if self.mode == 1:

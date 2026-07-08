@@ -64,6 +64,7 @@
       "battery_voltage_mv": {"name": "Battery Voltage"},
       "water_purified_today": {"name": "Water Purified Today"},
       "energy_today": {"name": "Energy Today"},
+      "power": {"name": "Power"},
       "energy_today_wh": {"name": "Energy Today (Wh)"},
       "filter_days_remaining": {"name": "Filter Days Remaining"},
       "firmware": {"name": "Firmware"},

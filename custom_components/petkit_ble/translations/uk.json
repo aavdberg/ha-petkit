@@ -64,6 +64,7 @@
       "battery_voltage_mv": {"name": "Напруга батареї"},
       "water_purified_today": {"name": "Очищена вода сьогодні"},
       "energy_today": {"name": "Споживання енергії сьогодні"},
+      "power": {"name": "Потужність"},
       "energy_today_wh": {"name": "Споживання енергії сьогодні (Вт·год)"},
       "filter_days_remaining": {"name": "Залишилось днів фільтра"},
       "firmware": {"name": "Прошивка"},
