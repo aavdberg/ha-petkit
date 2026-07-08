@@ -7,6 +7,7 @@ import secrets
 from typing import Any
 
 import voluptuous as vol
+from bleak.exc import BleakCharacteristicNotFoundError
 from homeassistant.components.bluetooth import (
     BluetoothServiceInfoBleak,
     async_ble_device_from_address,
@@ -188,6 +189,9 @@ class PetkitBleConfigFlow(ConfigFlow, domain=DOMAIN):
         client = PetkitBleClient(ble_device)
         try:
             initialized, device_id = await client.async_check_initialized()
+        except BleakCharacteristicNotFoundError as err:
+            _LOGGER.warning("Device %s does not have required BLE characteristics: %s", name, err)
+            return self.async_abort(reason="unsupported_device")
         except Exception:
             _LOGGER.exception("Failed to check device init status for %s", name)
             # Cannot check — create entry without secret

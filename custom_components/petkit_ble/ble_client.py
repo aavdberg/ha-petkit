@@ -11,6 +11,7 @@ from dataclasses import dataclass
 
 from bleak import BleakClient
 from bleak.backends.device import BLEDevice
+from bleak.exc import BleakCharacteristicNotFoundError
 from bleak_retry_connector import establish_connection
 
 from .const import (
@@ -302,7 +303,20 @@ class PetkitBleClient:
             self._device,
             self._device.address,
         )
-        await self._client.start_notify(BLE_NOTIFY_UUID, self._on_notify)
+        try:
+            await self._client.start_notify(BLE_NOTIFY_UUID, self._on_notify)
+        except BleakCharacteristicNotFoundError:
+            # Some models (e.g. W4X) don't expose the notify characteristic.
+            # Responses are only delivered via notifications, so we cannot
+            # communicate at all — re-raise so callers can abort/handle
+            # explicitly (config_flow aborts with "unsupported_device").
+            _LOGGER.warning(
+                "Device %s does not expose notify UUID %s; the model is not supported",
+                self._device.address,
+                BLE_NOTIFY_UUID,
+            )
+            raise
+
         self._rx_buf.clear()
         # Discard any stale notifications from a previous connection
         while not self._rx_queue.empty():
