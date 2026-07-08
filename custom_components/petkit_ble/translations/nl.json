@@ -64,6 +64,7 @@
       "battery_voltage_mv": {"name": "Batterijspanning"},
       "water_purified_today": {"name": "Gezuiverd water vandaag"},
       "energy_today": {"name": "Energieverbruik vandaag"},
+      "power": {"name": "Vermogen"},
       "energy_today_wh": {"name": "Energieverbruik vandaag (Wh)"},
       "filter_days_remaining": {"name": "Resterende filterdagen"},
       "firmware": {"name": "Firmware"},

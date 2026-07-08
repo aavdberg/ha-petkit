@@ -18,6 +18,7 @@ from homeassistant.const import (
     EntityCategory,
     UnitOfElectricPotential,
     UnitOfEnergy,
+    UnitOfPower,
     UnitOfTime,
     UnitOfVolume,
 )
@@ -90,6 +91,15 @@ SENSOR_DESCRIPTIONS: tuple[PetkitSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.VOLUME,
         state_class=SensorStateClass.TOTAL_INCREASING,
         value_fn=lambda d: round(d.water_purified_today_liters, 3),
+    ),
+    PetkitSensorEntityDescription(
+        key="power",
+        translation_key="power",
+        native_unit_of_measurement=UnitOfPower.WATT,
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        value_fn=lambda d: round(d.power_w, 3),
     ),
     PetkitSensorEntityDescription(
         key="energy_today",
