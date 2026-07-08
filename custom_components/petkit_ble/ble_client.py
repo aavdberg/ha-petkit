@@ -180,7 +180,6 @@ class PetkitBleClient:
         """Initialise with a discovered BLE device."""
         self._device = ble_device
         self._client: BleakClient | None = None
-        self._notify_supported = True  # Track if device supports notify UUID
         self._rx_buf: bytearray = bytearray()
         self._rx_queue: asyncio.Queue[bytes] = asyncio.Queue()
         self._seq: int = 0
@@ -307,12 +306,16 @@ class PetkitBleClient:
         try:
             await self._client.start_notify(BLE_NOTIFY_UUID, self._on_notify)
         except BleakCharacteristicNotFoundError:
+            # Some models (e.g. W4X) don't expose the notify characteristic.
+            # Responses are only delivered via notifications, so we cannot
+            # communicate at all — re-raise so callers can abort/handle
+            # explicitly (config_flow aborts with "unsupported_device").
             _LOGGER.warning(
-                "Device %s does not support notify UUID %s; continuing without real-time notifications",
+                "Device %s does not expose notify UUID %s; the model is not supported",
                 self._device.address,
                 BLE_NOTIFY_UUID,
             )
-            self._notify_supported = False
+            raise
 
         self._rx_buf.clear()
         # Discard any stale notifications from a previous connection
@@ -326,9 +329,8 @@ class PetkitBleClient:
         """Disconnect from the device, suppressing cleanup errors."""
         if self._client is None:
             return
-        if self._notify_supported:
-            with contextlib.suppress(Exception):
-                await self._client.stop_notify(BLE_NOTIFY_UUID)
+        with contextlib.suppress(Exception):
+            await self._client.stop_notify(BLE_NOTIFY_UUID)
         with contextlib.suppress(Exception):
             await self._client.disconnect()
         self._client = None

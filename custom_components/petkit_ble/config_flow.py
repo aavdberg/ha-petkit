@@ -190,7 +190,7 @@ class PetkitBleConfigFlow(ConfigFlow, domain=DOMAIN):
         try:
             initialized, device_id = await client.async_check_initialized()
         except BleakCharacteristicNotFoundError as err:
-            _LOGGER.exception("Device %s does not have required BLE characteristics: %s", name, err)
+            _LOGGER.warning("Device %s does not have required BLE characteristics: %s", name, err)
             return self.async_abort(reason="unsupported_device")
         except Exception:
             _LOGGER.exception("Failed to check device init status for %s", name)

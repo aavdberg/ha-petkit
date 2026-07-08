@@ -28,7 +28,8 @@
     "abort": {
       "already_configured": "Cet appareil est déjà configuré.",
       "no_devices_found": "Aucune fontaine Petkit n'a été trouvée.",
-      "device_already_initialized": "Cet appareil est déjà initialisé avec une clé secrète. Veuillez d'abord le réinitialiser aux paramètres d'usine (retirez le module de commande, maintenez le bouton d'alimentation enfoncé pendant 3 secondes jusqu'à ce que les LEDs clignotent), puis réessayez."
+      "device_already_initialized": "Cet appareil est déjà initialisé avec une clé secrète. Veuillez d'abord le réinitialiser aux paramètres d'usine (retirez le module de commande, maintenez le bouton d'alimentation enfoncé pendant 3 secondes jusqu'à ce que les LEDs clignotent), puis réessayez.",
+      "unsupported_device": "Ce modèle d'appareil n'est peut-être pas entièrement pris en charge par cette intégration. Veuillez signaler ce problème sur GitHub en indiquant le modèle de votre appareil et les journaux."
     }
   },
   "options": {
