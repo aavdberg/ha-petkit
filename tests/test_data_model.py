@@ -42,6 +42,54 @@ class TestIsPumpRunning:
         assert data.is_pump_running is False
 
 
+class TestIsOnAcPower:
+    """Tests for is_on_ac_power property."""
+
+    def test_ac_only_model_always_on_ac(self) -> None:
+        """AC-only models (non-CTW3) are always mains-powered regardless of electric_status."""
+        data = PetkitFountainData(alias=ALIAS_W5, electric_status=0)
+        assert data.is_on_ac_power is True
+
+    def test_ctw3_on_ac(self) -> None:
+        """CTW3 with electric_status == 2 is on AC."""
+        data = PetkitFountainData(alias=ALIAS_CTW3, electric_status=2)
+        assert data.is_on_ac_power is True
+
+    def test_ctw3_on_battery(self) -> None:
+        """CTW3 with electric_status != 2 is on battery."""
+        data = PetkitFountainData(alias=ALIAS_CTW3, electric_status=1)
+        assert data.is_on_ac_power is False
+
+
+class TestPowerW:
+    """Tests for power_w property."""
+
+    def test_running_on_ac_default(self) -> None:
+        """Pump running on AC → default coefficient (0.75 W)."""
+        data = PetkitFountainData(alias=ALIAS_W5, running_status=1)
+        assert data.power_w == pytest.approx(0.75)
+
+    def test_running_on_ac_w5c(self) -> None:
+        """W5C uses its specific coefficient (0.182 W)."""
+        data = PetkitFountainData(alias=ALIAS_W5C, running_status=1)
+        assert data.power_w == pytest.approx(0.182)
+
+    def test_not_running(self) -> None:
+        """Pump idle → 0 W even on AC."""
+        data = PetkitFountainData(alias=ALIAS_W5, running_status=0)
+        assert data.power_w == 0.0
+
+    def test_ctw3_on_battery(self) -> None:
+        """CTW3 running on battery (electric_status != 2) → 0 W from the mains."""
+        data = PetkitFountainData(alias=ALIAS_CTW3, running_status=1, electric_status=1)
+        assert data.power_w == 0.0
+
+    def test_ctw3_running_on_ac(self) -> None:
+        """CTW3 running on AC → default coefficient."""
+        data = PetkitFountainData(alias=ALIAS_CTW3, running_status=1, electric_status=2)
+        assert data.power_w == pytest.approx(0.75)
+
+
 class TestFilterDaysRemaining:
     """Tests for filter_days_remaining property."""
 
