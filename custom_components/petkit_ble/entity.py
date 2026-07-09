@@ -28,9 +28,9 @@ class PetkitBleEntity(CoordinatorEntity[PetkitBleCoordinator]):
         ``<platform>.<slug(device_name)>_<key>`` (e.g.
         ``sensor.petkit_ctw3_100_filter_percent``). The friendly name shown in
         the UI is still localized via ``translation_key``; only the entity_id is
-        kept language-independent (derived from the BLE device name and the
-        English entity key) so shared dashboards remain portable across
-        languages.
+        kept language-independent (derived from the configured device name,
+        typically the BLE advertisement name, and the English entity key) so
+        shared dashboards remain portable across languages.
         """
         super().__init__(coordinator)
         address: str = coordinator.config_entry.data[CONF_ADDRESS]
