@@ -6,7 +6,12 @@ import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from homeassistant.components.number import NumberEntity, NumberEntityDescription, NumberMode
+from homeassistant.components.number import (
+    ENTITY_ID_FORMAT,
+    NumberEntity,
+    NumberEntityDescription,
+    NumberMode,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -105,7 +110,7 @@ class PetkitBleNumber(PetkitBleEntity, NumberEntity):
         description: PetkitNumberDescription,
     ) -> None:
         """Initialise the number entity."""
-        super().__init__(coordinator, description.key)
+        super().__init__(coordinator, description.key, ENTITY_ID_FORMAT)
         self.entity_description = description
 
     @property

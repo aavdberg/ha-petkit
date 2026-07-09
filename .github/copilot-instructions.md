@@ -133,6 +133,10 @@ kwh = power_w * pump_runtime_min / 60 / 1000
 - **`async_step_bluetooth()`** — triggered automatically by HA when a matching BLE device
   is seen (matchers defined in `manifest.json` under the `bluetooth` key).
 - **`CoordinatorEntity`** — all platform entities inherit from `PetkitBleEntity`.
+- **Stable entity IDs** — `PetkitBleEntity.__init__` pins `entity_id` to
+  `<platform>.<slug(CONF_NAME)>_<key>` via `async_generate_entity_id`, so IDs are
+  language-independent (portable dashboards). Friendly names stay localized via
+  `translation_key`. Each platform passes its `ENTITY_ID_FORMAT` to `super().__init__`.
 
 ---
 
@@ -290,7 +294,7 @@ versions are the right granularity for "shipped to all HACS users".
 - **Linter**: ruff — run `ruff check custom_components/` before committing.
 - **Commit style**: Conventional Commits (`feat:`, `fix:`, `docs:`, `ci:`, `refactor:`).
 - **Translations**: Add keys to `strings.json` first, then mirror to all `translations/*.json`.
-- **New sensors**: Add to `sensor.py` description list + `strings.json` + all translation files.
+- **New sensors**: Add to `sensor.py` description list + `strings.json` + all translation files. The `entity_id` is auto-pinned to `sensor.<device>_<key>`; choose a stable English `key`.
 - **No direct push to `main` or `dev`** — always use a PR.
 
 ---

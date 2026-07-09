@@ -7,7 +7,7 @@ import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from homeassistant.components.time import TimeEntity, TimeEntityDescription
+from homeassistant.components.time import ENTITY_ID_FORMAT, TimeEntity, TimeEntityDescription
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -93,7 +93,7 @@ class PetkitBleTime(PetkitBleEntity, TimeEntity):
         description: PetkitTimeDescription,
     ) -> None:
         """Initialise the time entity."""
-        super().__init__(coordinator, description.key)
+        super().__init__(coordinator, description.key, ENTITY_ID_FORMAT)
         self.entity_description = description
 
     @property
