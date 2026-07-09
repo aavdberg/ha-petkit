@@ -126,7 +126,11 @@ class PetkitBleConfigFlow(ConfigFlow, domain=DOMAIN):
         """Scan for nearby Petkit BLE devices and let the user pick one."""
         if user_input is not None:
             address: str = user_input[CONF_ADDRESS].strip().upper()
-            name: str = user_input.get(CONF_NAME, address)
+            # Prefer an explicitly entered name, then the discovered BLE name
+            # (the selector only submits the address), then the MAC as a last
+            # resort. Using the BLE name keeps pinned entity IDs and model
+            # detection based on e.g. "Petkit_CTW3_100" rather than the MAC.
+            name: str = user_input.get(CONF_NAME, "").strip() or self._discovered_devices.get(address, "") or address
 
             await self.async_set_unique_id(address)
             self._abort_if_unique_id_configured()
