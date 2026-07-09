@@ -7,6 +7,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from homeassistant.components.binary_sensor import (
+    ENTITY_ID_FORMAT,
     BinarySensorDeviceClass,
     BinarySensorEntity,
     BinarySensorEntityDescription,
@@ -119,7 +120,7 @@ class PetkitBleBinarySensor(PetkitBleEntity, BinarySensorEntity):
         description: PetkitBinarySensorDescription,
     ) -> None:
         """Initialise the binary sensor."""
-        super().__init__(coordinator, description.key)
+        super().__init__(coordinator, description.key, ENTITY_ID_FORMAT)
         self.entity_description = description
 
     @property

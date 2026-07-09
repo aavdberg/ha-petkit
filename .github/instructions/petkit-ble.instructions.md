@@ -15,6 +15,7 @@ Apply this knowledge when reading, writing, or reviewing code in `custom_compone
 - **Python:** 3.12+, `from __future__ import annotations` in every module, `collections.abc.Callable`
 - **Linter:** ruff — run `uv run ruff check custom_components/` before committing
 - **Language:** ALL code, comments, docstrings, commit messages, PR titles/descriptions, and GitHub issues MUST be written in English. No exceptions, even when the user writes in another language.
+- **Entity IDs:** `PetkitBleEntity.__init__` pins `entity_id` to a stable, language-independent value `<platform>.<slug(CONF_NAME)>_<key>` (via `async_generate_entity_id`), so shared dashboards stay portable across HA UI languages. Friendly names remain localized through `translation_key`. Every platform MUST pass its own `ENTITY_ID_FORMAT` (imported from `homeassistant.components.<platform>`) as the third argument to `super().__init__(...)`.
 - **Branching:** feature/* and fix/* → PR to `dev`; never push directly to `dev` or `main`
 - **PR review gate:** Always wait for the Copilot code reviewer to *actually submit* its review (not just the workflow run to finish) before merging. The review comments arrive asynchronously after the "Request Copilot Code Review" workflow turns green. Verify with `gh pr view <N> --json reviews` and address every comment before merge.
 - **Post-merge:** After merging to `dev`, verify the `Pre-release` workflow produced a new `v<version>-dev.<timestamp>` GitHub release; this is what HACS beta-testers install.
@@ -105,8 +106,11 @@ CTW2   → CTW2
 1. Add field to `PetkitFountainData` in `ble_client.py`
 2. Parse in the correct `_parse_state_*` or `_parse_config_*` method
 3. Add `PetkitSensorEntityDescription` entry to `SENSOR_DESCRIPTIONS` in `sensor.py`
+   (the sensor platform already passes `ENTITY_ID_FORMAT`, so the `entity_id`
+   becomes `sensor.<device>_<key>` automatically — pick a stable English `key`)
 4. Add translation key to `strings.json` (source of truth)
-5. Mirror to `translations/en.json`, `translations/nl.json`, `translations/uk.json`
+5. Mirror to `translations/en.json`, `translations/nl.json`, `translations/fr.json`,
+   `translations/uk.json`
 
 ## File Map
 
