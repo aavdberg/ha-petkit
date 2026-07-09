@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
+from homeassistant.components.switch import ENTITY_ID_FORMAT, SwitchEntity, SwitchEntityDescription
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -43,7 +43,7 @@ class PetkitPowerSwitch(PetkitBleEntity, SwitchEntity):
 
     def __init__(self, coordinator: PetkitBleCoordinator) -> None:
         """Initialise the power switch."""
-        super().__init__(coordinator, POWER_SWITCH_DESCRIPTION.key)
+        super().__init__(coordinator, POWER_SWITCH_DESCRIPTION.key, ENTITY_ID_FORMAT)
         self.entity_description = POWER_SWITCH_DESCRIPTION
 
     @property
@@ -96,7 +96,7 @@ class PetkitSettingsSwitch(PetkitBleEntity, SwitchEntity):
 
     def __init__(self, coordinator: PetkitBleCoordinator, key: str, field_name: str) -> None:
         """Initialise the settings switch."""
-        super().__init__(coordinator, key)
+        super().__init__(coordinator, key, ENTITY_ID_FORMAT)
         self.entity_description = SwitchEntityDescription(key=key, translation_key=key)
         self._field_name = field_name
 

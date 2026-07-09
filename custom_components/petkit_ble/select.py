@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from homeassistant.components.select import SelectEntity, SelectEntityDescription
+from homeassistant.components.select import ENTITY_ID_FORMAT, SelectEntity, SelectEntityDescription
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -41,7 +41,7 @@ class PetkitModeSelect(PetkitBleEntity, SelectEntity):
 
     def __init__(self, coordinator: PetkitBleCoordinator) -> None:
         """Initialise the mode select."""
-        super().__init__(coordinator, MODE_SELECT_DESCRIPTION.key)
+        super().__init__(coordinator, MODE_SELECT_DESCRIPTION.key, ENTITY_ID_FORMAT)
         self.entity_description = MODE_SELECT_DESCRIPTION
 
     @property

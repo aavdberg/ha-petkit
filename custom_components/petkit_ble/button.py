@@ -6,7 +6,7 @@ import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
+from homeassistant.components.button import ENTITY_ID_FORMAT, ButtonEntity, ButtonEntityDescription
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -58,7 +58,7 @@ class PetkitBleButton(PetkitBleEntity, ButtonEntity):
         description: PetkitButtonDescription,
     ) -> None:
         """Initialise the button."""
-        super().__init__(coordinator, description.key)
+        super().__init__(coordinator, description.key, ENTITY_ID_FORMAT)
         self.entity_description = description
 
     async def async_press(self) -> None:
