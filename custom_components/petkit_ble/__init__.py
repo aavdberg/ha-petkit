@@ -75,18 +75,30 @@ async def _apply_debug_option(hass: HomeAssistant, entry: ConfigEntry, *, unload
         if _debug_entries and _file_handler is None:
             log_path = os.path.join(hass.config.config_dir, "petkit.log")
             # Open the log file off the event loop to avoid a blocking open().
-            handler = await hass.async_add_executor_job(_build_file_handler, log_path)
-            _INTEGRATION_LOGGER.addHandler(handler)
-            _file_handler = handler
-            _LOGGER.debug("Debug log file opened: %s", log_path)
+            try:
+                handler = await hass.async_add_executor_job(_build_file_handler, log_path)
+            except OSError as err:
+                # The debug log file is optional — never fail entry setup just
+                # because it cannot be opened (e.g. permission / disk error).
+                _LOGGER.warning("Could not open debug log file %s: %s", log_path, err)
+            else:
+                _INTEGRATION_LOGGER.addHandler(handler)
+                _file_handler = handler
+                _LOGGER.debug("Debug log file opened: %s", log_path)
 
         elif not _debug_entries and _file_handler is not None:
             handler = _file_handler
             _INTEGRATION_LOGGER.removeHandler(handler)
             _file_handler = None
-            # Closing flushes and closes the file — also blocking I/O.
-            await hass.async_add_executor_job(handler.close)
-            _LOGGER.info("Debug log file closed")
+            # Closing flushes and closes the file — also blocking I/O that may
+            # raise; keep unload/options updates reliable and only report a
+            # clean close when it actually succeeded.
+            try:
+                await hass.async_add_executor_job(handler.close)
+            except OSError as err:
+                _LOGGER.warning("Error closing debug log file: %s", err)
+            else:
+                _LOGGER.info("Debug log file closed")
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
