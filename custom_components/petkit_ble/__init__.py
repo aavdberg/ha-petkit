@@ -52,11 +52,16 @@ def _build_file_handler(log_path: str) -> RotatingFileHandler:
     return handler
 
 
-async def _apply_debug_option(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Apply the debug option: set log level and manage the petkit.log file handler."""
+async def _apply_debug_option(hass: HomeAssistant, entry: ConfigEntry, *, unloading: bool = False) -> None:
+    """Apply the debug option: set log level and manage the petkit.log file handler.
+
+    When ``unloading`` is ``True`` the entry is always treated as debug-off so
+    it is removed from the active set (used from ``async_unload_entry``),
+    regardless of its stored ``CONF_DEBUG`` option.
+    """
     global _file_handler
 
-    debug = entry.options.get(CONF_DEBUG, False)
+    debug = entry.options.get(CONF_DEBUG, False) and not unloading
 
     async with _debug_lock:
         if debug:
@@ -105,7 +110,8 @@ async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> Non
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a Petkit BLE config entry."""
     # Clean up debug tracking for this entry so the file handler is removed
-    # if no other entry still has debug enabled.
-    _debug_entries.discard(entry.entry_id)
-    await _apply_debug_option(hass, entry)
+    # if no other entry still has debug enabled. Pass ``unloading`` so the
+    # discard happens inside the lock and the entry is not re-added from its
+    # stored options.
+    await _apply_debug_option(hass, entry, unloading=True)
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
