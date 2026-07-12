@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from logging.handlers import RotatingFileHandler
@@ -30,43 +31,79 @@ _INTEGRATION_LOGGER = logging.getLogger(f"custom_components.{DOMAIN}")
 # Track which config entries have debug enabled and a shared file handler.
 _debug_entries: set[str] = set()
 _file_handler: logging.Handler | None = None
+# Serialise handler creation/teardown: ``_apply_debug_option`` is now async and
+# has an ``await`` point (the executor job), so concurrent calls for multiple
+# entries must not race on ``_file_handler``.
+_debug_lock = asyncio.Lock()
 
 
-def _apply_debug_option(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Apply the debug option: set log level and manage the petkit.log file handler."""
+def _build_file_handler(log_path: str) -> RotatingFileHandler:
+    """Build the rotating file handler.
+
+    ``RotatingFileHandler`` opens the log file in its constructor, which is
+    blocking file I/O; this helper is always run in an executor so the open
+    never happens on the event loop.
+    """
+    handler = RotatingFileHandler(log_path, maxBytes=5 * 1024 * 1024, backupCount=2, encoding="utf-8")
+    handler.setLevel(logging.DEBUG)
+    handler.setFormatter(
+        logging.Formatter("%(asctime)s %(levelname)-8s %(name)s: %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+    )
+    return handler
+
+
+async def _apply_debug_option(hass: HomeAssistant, entry: ConfigEntry, *, unloading: bool = False) -> None:
+    """Apply the debug option: set log level and manage the petkit.log file handler.
+
+    When ``unloading`` is ``True`` the entry is always treated as debug-off so
+    it is removed from the active set (used from ``async_unload_entry``),
+    regardless of its stored ``CONF_DEBUG`` option.
+    """
     global _file_handler
 
-    debug = entry.options.get(CONF_DEBUG, False)
+    debug = entry.options.get(CONF_DEBUG, False) and not unloading
 
-    if debug:
-        _debug_entries.add(entry.entry_id)
-    else:
-        _debug_entries.discard(entry.entry_id)
+    async with _debug_lock:
+        if debug:
+            _debug_entries.add(entry.entry_id)
+        else:
+            _debug_entries.discard(entry.entry_id)
 
-    # Log level follows the union of all entries: DEBUG if any entry has it on.
-    _INTEGRATION_LOGGER.setLevel(logging.DEBUG if _debug_entries else logging.NOTSET)
+        # Log level follows the union of all entries: DEBUG if any entry has it on.
+        _INTEGRATION_LOGGER.setLevel(logging.DEBUG if _debug_entries else logging.NOTSET)
 
-    if _debug_entries and _file_handler is None:
-        log_path = os.path.join(hass.config.config_dir, "petkit.log")
-        handler = RotatingFileHandler(log_path, maxBytes=5 * 1024 * 1024, backupCount=2, encoding="utf-8")
-        handler.setLevel(logging.DEBUG)
-        handler.setFormatter(
-            logging.Formatter("%(asctime)s %(levelname)-8s %(name)s: %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
-        )
-        _INTEGRATION_LOGGER.addHandler(handler)
-        _file_handler = handler
-        _LOGGER.debug("Debug log file opened: %s", log_path)
+        if _debug_entries and _file_handler is None:
+            log_path = os.path.join(hass.config.config_dir, "petkit.log")
+            # Open the log file off the event loop to avoid a blocking open().
+            try:
+                handler = await hass.async_add_executor_job(_build_file_handler, log_path)
+            except OSError as err:
+                # The debug log file is optional — never fail entry setup just
+                # because it cannot be opened (e.g. permission / disk error).
+                _LOGGER.warning("Could not open debug log file %s: %s", log_path, err)
+            else:
+                _INTEGRATION_LOGGER.addHandler(handler)
+                _file_handler = handler
+                _LOGGER.debug("Debug log file opened: %s", log_path)
 
-    elif not _debug_entries and _file_handler is not None:
-        _INTEGRATION_LOGGER.removeHandler(_file_handler)
-        _file_handler.close()
-        _file_handler = None
-        _LOGGER.info("Debug log file closed")
+        elif not _debug_entries and _file_handler is not None:
+            handler = _file_handler
+            _INTEGRATION_LOGGER.removeHandler(handler)
+            _file_handler = None
+            # Closing flushes and closes the file — also blocking I/O that may
+            # raise; keep unload/options updates reliable and only report a
+            # clean close when it actually succeeded.
+            try:
+                await hass.async_add_executor_job(handler.close)
+            except OSError as err:
+                _LOGGER.warning("Error closing debug log file: %s", err)
+            else:
+                _LOGGER.info("Debug log file closed")
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Petkit BLE from a config entry."""
-    _apply_debug_option(hass, entry)
+    await _apply_debug_option(hass, entry)
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
 
     coordinator = PetkitBleCoordinator(hass, entry)
@@ -79,13 +116,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Handle options update — re-apply debug level without full reload."""
-    _apply_debug_option(hass, entry)
+    await _apply_debug_option(hass, entry)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a Petkit BLE config entry."""
     # Clean up debug tracking for this entry so the file handler is removed
-    # if no other entry still has debug enabled.
-    _debug_entries.discard(entry.entry_id)
-    _apply_debug_option(hass, entry)
+    # if no other entry still has debug enabled. Pass ``unloading`` so the
+    # discard happens inside the lock and the entry is not re-added from its
+    # stored options.
+    await _apply_debug_option(hass, entry, unloading=True)
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
