@@ -29,7 +29,17 @@ if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
 
 from .ble_client import PetkitBleClient, PetkitFountainData
-from .const import CONF_ADDRESS, CONF_DEVICE_SECRET, CONF_MODEL, CONF_NAME, DOMAIN, KNOWN_ALIASES, POLL_INTERVAL
+from .const import (
+    CONF_ADDRESS,
+    CONF_DEVICE_SECRET,
+    CONF_MODEL,
+    CONF_NAME,
+    DOMAIN,
+    KNOWN_ALIASES,
+    MODE_NORMAL,
+    MODE_SMART,
+    POLL_INTERVAL,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -98,6 +108,22 @@ def _reconcile_settings_into(
         )
         return True
     return warned
+
+
+def _reconcile_mode_into(data: PetkitFountainData, cached_mode: int | None) -> int | None:
+    """Keep the last known mode when the device reports an unknown value.
+
+    Generic W4/W5/CTW2 devices and CTW3 can both report ``0`` while the pump
+    is off or sleeping. Because the mode select only knows about Normal/Smart,
+    we preserve the last known valid mode across polls instead of letting the
+    UI fall back to ``unknown`` or the dataclass default.
+    """
+    if data.mode in (MODE_NORMAL, MODE_SMART):
+        return data.mode
+    if cached_mode in (MODE_NORMAL, MODE_SMART):
+        data.mode = cached_mode
+        return cached_mode
+    return None
 
 
 # Byte indices in the CMD 210 payload that are known to change every poll
@@ -255,6 +281,10 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
         self._settings_cache: dict[str, int] = {}
         self._warned_no_config: bool = False
 
+        # Cache the last valid mode so a device reporting mode=0 while off or
+        # sleeping does not make the HA select flicker back to unknown/normal.
+        self._mode_cache: int | None = None
+
         # Previous CMD 210 raw payload, kept so we can log a byte-by-byte
         # diff between consecutive polls (see _diff_state_bytes). Used as a
         # diagnostic aid for issue #65 (CTW3 detect_status offset unknown).
@@ -406,7 +436,7 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
             if client is None:
                 raise UpdateFailed(f"Petkit fountain {self._name} ({self._address}) not reachable via Bluetooth")
             try:
-                data = await client.async_poll(self._alias, self._secret)
+                data = await client.async_poll(self._alias, self._secret, initial_mode=self._mode_cache)
             except Exception as exc:
                 raise UpdateFailed(f"Error communicating with {self._name}: {exc}") from exc
 
@@ -436,6 +466,7 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
             self._prev_raw_state = data.raw_state
 
         self._reconcile_settings(data)
+        self._mode_cache = _reconcile_mode_into(data, self._mode_cache)
 
         # Self-heal persistence: if the BLE client inferred a corrected alias
         # from the CMD 210 payload (e.g. when the original entry stored a MAC
@@ -522,4 +553,15 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
         if self.data is not None:
             setattr(self.data, field, value)
             self.data.config_loaded = True
+            self.async_set_updated_data(self.data)
+
+    @callback
+    def apply_mode_optimistic(self, mode: int) -> None:
+        """Persist a user-selected mode into the live data and cache."""
+        if mode not in (MODE_NORMAL, MODE_SMART):
+            _LOGGER.debug("apply_mode_optimistic: invalid mode %r ignored", mode)
+            return
+        self._mode_cache = mode
+        if self.data is not None:
+            self.data.mode = mode
             self.async_set_updated_data(self.data)

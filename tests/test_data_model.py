@@ -42,6 +42,14 @@ class TestIsPumpRunning:
         assert data.is_pump_running is False
 
 
+class TestModeDefault:
+    """Tests for the default mode value."""
+
+    def test_default_is_unknown(self) -> None:
+        data = PetkitFountainData()
+        assert data.mode == 0
+
+
 class TestIsOnAcPower:
     """Tests for is_on_ac_power property."""
 
@@ -92,6 +100,12 @@ class TestPowerW:
 
 class TestFilterDaysRemaining:
     """Tests for filter_days_remaining property."""
+
+    def test_unknown_mode_uses_normal_calculation(self) -> None:
+        """Raw mode 0 is treated like Normal for filter-life estimates."""
+        data = PetkitFountainData(mode=0, filter_percent=80)
+        expected = math.ceil(80 / 100 * 60)
+        assert data.filter_days_remaining == expected
 
     def test_normal_mode_full(self) -> None:
         """100% filter in normal mode → ceil(1.0 * 60) = 60 days."""

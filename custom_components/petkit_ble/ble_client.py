@@ -59,7 +59,7 @@ class PetkitFountainData:
 
     # Power & mode (CMD 210)
     power_status: int = 0  # 0=off, 1=on
-    mode: int = 1  # 1=normal, 2=smart
+    mode: int = 0  # 0=unknown/off, 1=normal, 2=smart
     running_status: int = 0
     dnd_state: int = 0
 
@@ -171,7 +171,7 @@ class PetkitFountainData:
     @property
     def filter_days_remaining(self) -> int:
         """Estimate remaining filter life in days."""
-        if self.mode == 1:
+        if self.mode in (0, 1):
             # Normal mode: pump runs continuously, filter lasts 60 days at 100%
             return math.ceil(self.filter_percent / 100 * FILTER_LIFE_NORMAL_DAYS)
 
@@ -632,12 +632,20 @@ class PetkitBleClient:
     # Public API
     # ------------------------------------------------------------------
 
-    async def async_poll(self, alias: str, secret: bytes | None = None) -> PetkitFountainData:
+    async def async_poll(
+        self,
+        alias: str,
+        secret: bytes | None = None,
+        *,
+        initial_mode: int | None = None,
+    ) -> PetkitFountainData:
         """Connect, authenticate, poll all state commands, disconnect.
 
         Returns a fully-populated PetkitFountainData instance.
         """
         data = PetkitFountainData(alias=alias)
+        if initial_mode in (1, 2):
+            data.mode = initial_mode
         try:
             await self._connect()
             await self._authenticate(alias, secret)

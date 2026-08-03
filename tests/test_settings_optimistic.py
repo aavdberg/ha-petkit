@@ -24,6 +24,7 @@ from custom_components.petkit_ble.ble_client import (
 from custom_components.petkit_ble.const import ALIAS_CTW3
 from custom_components.petkit_ble.coordinator import (
     _SETTINGS_FIELDS,
+    _reconcile_mode_into,
     _reconcile_settings_into,
 )
 
@@ -144,3 +145,31 @@ class TestReconcileSettingsInto:
         _reconcile_settings_into(fresh, cache, warned=False, name="x", address="y")
         assert fresh.led_switch == 1
         assert fresh.config_loaded is True
+
+
+class TestReconcileModeInto:
+    """The coordinator preserves the last known mode across raw 0 polls."""
+
+    def test_cached_mode_restores_unknown_poll(self) -> None:
+        data = PetkitFountainData(mode=0)
+
+        cached = _reconcile_mode_into(data, 2)
+
+        assert data.mode == 2
+        assert cached == 2
+
+    def test_known_mode_updates_cache(self) -> None:
+        data = PetkitFountainData(mode=2)
+
+        cached = _reconcile_mode_into(data, None)
+
+        assert data.mode == 2
+        assert cached == 2
+
+    def test_unknown_without_cache_stays_unknown(self) -> None:
+        data = PetkitFountainData(mode=0)
+
+        cached = _reconcile_mode_into(data, None)
+
+        assert data.mode == 0
+        assert cached is None

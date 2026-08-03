@@ -86,6 +86,7 @@ class PetkitModeSelect(PetkitBleEntity, SelectEntity):
         )
         success = await self.coordinator.async_send_command(CMD_SET_POWER_MODE, payload)
         if success:
+            self.coordinator.apply_mode_optimistic(mode_int)
             await self.coordinator.async_request_refresh()
         else:
             _LOGGER.error("Failed to set mode to %s", option)
