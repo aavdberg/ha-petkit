@@ -522,7 +522,19 @@ class PetkitBleClient:
             return
         data.raw_state = bytes(payload)
         data.power_status = payload[0]
-        data.mode = payload[1]
+        # When the device is powered off it reports mode=0, which has no entry
+        # in the mode map and would cause the select entity to show "Unknown".
+        # Only update mode when the raw value is a known mode (1=normal, 2=smart).
+        # This mirrors the latch behaviour in _parse_state_ctw3 (issue #57 / #106).
+        mode_raw = payload[1]
+        if mode_raw in (1, 2):
+            data.mode = mode_raw
+        else:
+            _LOGGER.debug(
+                "Generic device reported mode=%d; keeping latched mode=%d",
+                mode_raw,
+                data.mode,
+            )
         data.dnd_state = payload[2]
         data.warning_breakdown = payload[3]
         data.warning_water_missing = payload[4]
