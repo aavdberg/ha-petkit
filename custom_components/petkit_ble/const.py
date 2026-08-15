@@ -98,10 +98,13 @@ PETKIT_EPOCH_OFFSET = 946684800
 # Flow rate and divisor per alias for water volume calculation
 FLOW_RATE_LPM: dict[str, float] = {
     ALIAS_W5C: 1.3,
+    ALIAS_W4X: 1.5,
+    ALIAS_W4XUVC: 1.5,
 }
 FLOW_DIVISOR: dict[str, float] = {
     ALIAS_W5C: 1.0,
     ALIAS_W4X: 1.8,
+    ALIAS_W4XUVC: 1.8,
     ALIAS_CTW3: 3.0,
 }
 DEFAULT_FLOW_RATE_LPM = 1.5
@@ -110,6 +113,7 @@ DEFAULT_FLOW_DIVISOR = 2.0
 # Power coefficient (watts) for energy calculation
 POWER_COEFF_W: dict[str, float] = {
     ALIAS_W5C: 0.182,
+    ALIAS_W4XUVC: 0.75,
 }
 DEFAULT_POWER_COEFF_W = 0.75
 

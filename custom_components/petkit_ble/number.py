@@ -30,6 +30,7 @@ class PetkitNumberDescription(NumberEntityDescription):
 
     value_fn: Callable[[PetkitFountainData], float | None]
     available_fn: Callable[[PetkitFountainData], bool] = lambda _: True
+    supported_fn: Callable[[PetkitFountainData], bool] = lambda _: True
     field_name: str
 
 
@@ -73,6 +74,7 @@ NUMBER_DESCRIPTIONS: tuple[PetkitNumberDescription, ...] = (
         mode=NumberMode.BOX,
         value_fn=lambda d: d.battery_work_time,
         available_fn=lambda d: d.is_ctw3,
+        supported_fn=lambda d: d.is_ctw3,
         field_name="battery_work_time",
     ),
     PetkitNumberDescription(
@@ -84,6 +86,7 @@ NUMBER_DESCRIPTIONS: tuple[PetkitNumberDescription, ...] = (
         mode=NumberMode.BOX,
         value_fn=lambda d: d.battery_sleep_time,
         available_fn=lambda d: d.is_ctw3,
+        supported_fn=lambda d: d.is_ctw3,
         field_name="battery_sleep_time",
     ),
 )
@@ -96,7 +99,13 @@ async def async_setup_entry(
 ) -> None:
     """Set up Petkit BLE number entities from a config entry."""
     coordinator: PetkitBleCoordinator = config_entry.runtime_data
-    async_add_entities(PetkitBleNumber(coordinator, desc) for desc in NUMBER_DESCRIPTIONS)
+    data = coordinator.data
+    descriptions = (
+        NUMBER_DESCRIPTIONS
+        if data is None
+        else tuple(d for d in NUMBER_DESCRIPTIONS if d.supported_fn(data))
+    )
+    async_add_entities(PetkitBleNumber(coordinator, desc) for desc in descriptions)
 
 
 class PetkitBleNumber(PetkitBleEntity, NumberEntity):
