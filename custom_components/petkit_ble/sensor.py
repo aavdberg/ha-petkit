@@ -27,10 +27,30 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .ble_client import PetkitFountainData
+from .const import (
+    DEFAULT_FLOW_DIVISOR,
+    DEFAULT_FLOW_RATE_LPM,
+    FLOW_DIVISOR,
+    FLOW_RATE_LPM,
+)
 from .coordinator import PetkitBleCoordinator
 from .entity import PetkitBleEntity
 
 _LOGGER = logging.getLogger(__name__)
+
+_DAILY_COUNTER_MIN_LEN = 16
+
+
+def _has_daily_counters(d: PetkitFountainData) -> bool:
+    """True, if the firmware reports the pump's daily operating time."""
+    return d.is_ctw3 or len(d.raw_state) >= _DAILY_COUNTER_MIN_LEN
+
+
+def _water_purified_total_liters(d: PetkitFountainData) -> float:
+    """Liters purified over the pump's entire service life."""
+    flow_rate = FLOW_RATE_LPM.get(d.alias, DEFAULT_FLOW_RATE_LPM)
+    divisor = FLOW_DIVISOR.get(d.alias, DEFAULT_FLOW_DIVISOR)
+    return (flow_rate * d.pump_runtime / 60) / divisor
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -39,6 +59,7 @@ class PetkitSensorEntityDescription(SensorEntityDescription):
 
     value_fn: Callable[[PetkitFountainData], float | int | str | None]
     available_fn: Callable[[PetkitFountainData], bool] = lambda _: True
+    supported_fn: Callable[[PetkitFountainData], bool] = lambda _: True
 
 
 SENSOR_DESCRIPTIONS: tuple[PetkitSensorEntityDescription, ...] = (
@@ -57,6 +78,7 @@ SENSOR_DESCRIPTIONS: tuple[PetkitSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.DURATION,
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda d: d.pump_runtime_today,
+        available_fn=_has_daily_counters,
     ),
     PetkitSensorEntityDescription(
         key="pump_runtime",
@@ -75,6 +97,7 @@ SENSOR_DESCRIPTIONS: tuple[PetkitSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda d: d.battery_percent,
         available_fn=lambda d: d.is_ctw3,
+        supported_fn=lambda d: d.is_ctw3,
     ),
     PetkitSensorEntityDescription(
         key="battery_voltage_mv",
@@ -84,6 +107,7 @@ SENSOR_DESCRIPTIONS: tuple[PetkitSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda d: d.battery_voltage_mv,
         available_fn=lambda d: d.is_ctw3,
+        supported_fn=lambda d: d.is_ctw3,
     ),
     PetkitSensorEntityDescription(
         key="water_purified_today",
@@ -92,6 +116,16 @@ SENSOR_DESCRIPTIONS: tuple[PetkitSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.VOLUME,
         state_class=SensorStateClass.TOTAL_INCREASING,
         value_fn=lambda d: round(d.water_purified_today_liters, 3),
+        available_fn=_has_daily_counters,
+    ),
+    PetkitSensorEntityDescription(
+        key="water_purified_total",
+        translation_key="water_purified_total",
+        native_unit_of_measurement=UnitOfVolume.LITERS,
+        device_class=SensorDeviceClass.VOLUME,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        suggested_display_precision=1,
+        value_fn=lambda d: round(_water_purified_total_liters(d), 2),
     ),
     PetkitSensorEntityDescription(
         key="power",
@@ -110,6 +144,7 @@ SENSOR_DESCRIPTIONS: tuple[PetkitSensorEntityDescription, ...] = (
         state_class=SensorStateClass.TOTAL_INCREASING,
         suggested_display_precision=4,
         value_fn=lambda d: round(d.energy_today_kwh, 6),
+        available_fn=_has_daily_counters,
     ),
     PetkitSensorEntityDescription(
         key="energy_today_wh",
@@ -117,6 +152,7 @@ SENSOR_DESCRIPTIONS: tuple[PetkitSensorEntityDescription, ...] = (
         native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,
         suggested_display_precision=2,
         value_fn=lambda d: round(d.energy_today_wh, 3),
+        available_fn=_has_daily_counters,
     ),
     PetkitSensorEntityDescription(
         key="filter_days_remaining",
@@ -153,6 +189,7 @@ SENSOR_DESCRIPTIONS: tuple[PetkitSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda d: d.drink_event_count,
         available_fn=lambda d: d.is_ctw3,
+        supported_fn=lambda d: d.is_ctw3,
     ),
     PetkitSensorEntityDescription(
         key="state_tail_hex",
@@ -161,6 +198,27 @@ SENSOR_DESCRIPTIONS: tuple[PetkitSensorEntityDescription, ...] = (
         entity_registry_enabled_default=False,
         value_fn=lambda d: d.state_tail.hex() if d.state_tail else None,
         available_fn=lambda d: d.is_ctw3 and bool(d.state_tail),
+        supported_fn=lambda d: d.is_ctw3,
+    ),
+    PetkitSensorEntityDescription(
+        key="supply_voltage",
+        translation_key="supply_voltage",
+        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
+        device_class=SensorDeviceClass.VOLTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        suggested_display_precision=2,
+        value_fn=lambda d: round(d.battery_voltage_mv_66 / 1000, 3) if d.battery_voltage_mv_66 else None,
+        available_fn=lambda d: not d.is_ctw3,
+        supported_fn=lambda d: not d.is_ctw3,
+    ),
+    PetkitSensorEntityDescription(
+        key="state_payload_len",
+        translation_key="state_payload_len",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        native_unit_of_measurement="B",
+        value_fn=lambda d: len(d.raw_state) or None,
     ),
 )
 
@@ -172,7 +230,13 @@ async def async_setup_entry(
 ) -> None:
     """Set up Petkit BLE sensors from a config entry."""
     coordinator: PetkitBleCoordinator = config_entry.runtime_data
-    async_add_entities(PetkitBleSensor(coordinator, description) for description in SENSOR_DESCRIPTIONS)
+    data = coordinator.data
+    descriptions = (
+        SENSOR_DESCRIPTIONS
+        if data is None
+        else tuple(d for d in SENSOR_DESCRIPTIONS if d.supported_fn(data))
+    )
+    async_add_entities(PetkitBleSensor(coordinator, description) for description in descriptions)
 
 
 class PetkitBleSensor(PetkitBleEntity, SensorEntity):

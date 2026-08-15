@@ -63,6 +63,7 @@
       "battery_percent": {"name": "Battery"},
       "battery_voltage_mv": {"name": "Battery Voltage"},
       "water_purified_today": {"name": "Water Purified Today"},
+      "water_purified_total": {"name": "Water Purified Total"},
       "energy_today": {"name": "Energy Today"},
       "power": {"name": "Power"},
       "energy_today_wh": {"name": "Energy Today (Wh)"},
@@ -71,7 +72,9 @@
       "hardware_version": {"name": "Hardware Version"},
       "rssi": {"name": "Signal Strength"},
       "drink_count": {"name": "Drink Events Today"},
-      "state_tail_hex": {"name": "CTW3 State Tail (hex)"}
+      "state_tail_hex": {"name": "CTW3 State Tail (hex)"},
+      "supply_voltage": {"name": "Supply Voltage"},
+      "state_payload_len": {"name": "State Frame Length"}
     },
     "binary_sensor": {
       "pump_running": {"name": "Pump Running"},
