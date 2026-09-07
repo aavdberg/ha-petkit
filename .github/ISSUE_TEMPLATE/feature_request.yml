@@ -1,0 +1,83 @@
+name: Feature Request
+description: Suggest an idea or new feature for ha-petkit
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for suggesting a new feature or improvement for **ha-petkit**!
+        Please fill out the form below to help us understand your request and determine its feasibility.
+
+  - type: dropdown
+    id: model
+    attributes:
+      label: Petkit Device Model
+      description: Select your Petkit fountain model.
+      options:
+        - CTW3 (Eversweet Max 2 / Cordless)
+        - CTW2 (Eversweet Solo 2)
+        - W5C (Eversweet 3 Pro)
+        - W5N (Eversweet 3)
+        - W5 (Eversweet)
+        - W4X (Eversweet W4X)
+        - W4XUVC (Eversweet W4X UVC)
+        - Other / Not Sure
+    validations:
+      required: true
+
+  - type: input
+    id: firmware
+    attributes:
+      label: Firmware & Hardware Version
+      description: As reported in Home Assistant diagnostic sensors or the official Petkit app.
+      placeholder: e.g., Firmware 111, Hardware 1.0
+    validations:
+      required: false
+
+  - type: input
+    id: ha_version
+    attributes:
+      label: Home Assistant & Integration Version
+      description: Your version of Home Assistant and ha-petkit integration.
+      placeholder: e.g., HA 2024.9.1, ha-petkit v1.7.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: app_behavior
+    attributes:
+      label: Is this feature supported in the official Petkit mobile app?
+      description: Does the official Petkit app exhibit or support this functionality natively?
+      options:
+        - "Yes"
+        - "No"
+        - "Unsure / Don't use the official app"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Feature Description
+      description: Clear and concise description of what feature you want and why.
+      placeholder: Describe the problem or desire...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: Proposed Solution / Expected Behavior
+      description: How would you like this feature to behave in Home Assistant (e.g., new entity, service, or automation trigger)?
+      placeholder: Describe the ideal solution...
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional Context & Debug Logs
+      description: Add any screenshot, BLE captures, or `petkit.log` debug snippets if applicable.
+    validations:
+      required: false
