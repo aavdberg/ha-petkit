@@ -110,7 +110,11 @@ def _reconcile_settings_into(
     return warned
 
 
-def _reconcile_mode_into(data: PetkitFountainData, cached_mode: int | None) -> int | None:
+def _reconcile_mode_into(
+    data: PetkitFountainData,
+    cached_mode: int | None,
+    store: Any | None = None,
+) -> int | None:
     """Keep the last known mode when the device reports an unknown value.
 
     Generic W4/W5/CTW2 devices and CTW3 can both report ``0`` while the pump
@@ -118,12 +122,47 @@ def _reconcile_mode_into(data: PetkitFountainData, cached_mode: int | None) -> i
     we preserve the last known valid mode across polls instead of letting the
     UI fall back to ``unknown`` or the dataclass default.
     """
+    new_mode = cached_mode
     if data.mode in (MODE_NORMAL, MODE_SMART):
-        return data.mode
-    if cached_mode in (MODE_NORMAL, MODE_SMART):
+        new_mode = data.mode
+    elif cached_mode in (MODE_NORMAL, MODE_SMART):
         data.mode = cached_mode
-        return cached_mode
+
+    if new_mode in (MODE_NORMAL, MODE_SMART) and new_mode != cached_mode and store is not None:
+        _save_mode_state_into(store, new_mode)
+
+    return new_mode
+
+
+async def _load_mode_state_into(store: Any) -> int | None:
+    """Load the persisted mode from a ``Store`` snapshot if one exists.
+
+    Storage failures are swallowed at debug level — they must never block
+    integration setup. Invalid modes are discarded.
+    """
+    try:
+        stored = await store.async_load()
+    except Exception as exc:
+        _LOGGER.debug("Failed to load mode store: %s", exc)
+        return None
+    if not stored or not isinstance(stored, dict):
+        return None
+    try:
+        mode = int(stored.get("mode", 0))
+    except (TypeError, ValueError) as exc:
+        _LOGGER.debug("Discarding corrupt mode store: %s", exc)
+        return None
+    if mode in (MODE_NORMAL, MODE_SMART):
+        return mode
     return None
+
+
+def _save_mode_state_into(store: Any, mode: int) -> None:
+    """Schedule saving the mode state to ``Store``."""
+    try:
+        store.async_delay_save(lambda: {"mode": mode}, 5.0)
+    except Exception as exc:
+        _LOGGER.debug("Failed to save mode store: %s", exc)
 
 
 # Byte indices in the CMD 210 payload that are known to change every poll
@@ -274,6 +313,7 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
         # and colons are invalid on some filesystems (notably Windows).
         self._drink_state = _DrinkCountState(date_iso=dt_util.now().date().isoformat())
         self._drink_store: Store = Store(hass, version=1, key=f"{DOMAIN}_drink_count_{config_entry.entry_id}")
+        self._mode_store: Store = Store(hass, version=1, key=f"{DOMAIN}_mode_{config_entry.entry_id}")
 
         # Cache for settings fields (CMD 211 / CMD 221). See _SETTINGS_FIELDS
         # docstring for rationale. Populated either by a successful CMD 211
@@ -298,12 +338,14 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
         )
 
     async def async_load_persistent_state(self) -> None:
-        """Load the persisted drink-event counter from disk.
+        """Load the persisted drink-event counter and mode from disk.
 
         Called once before the first refresh so a Home Assistant restart or
-        integration reload no longer wipes today's count to zero.
+        integration reload no longer wipes today's count to zero or loses the
+        last known operation mode.
         """
         await _load_drink_state_into(self._drink_state, self._drink_store)
+        self._mode_cache = await _load_mode_state_into(self._mode_store)
 
     async def _track_drink_event(self, data: PetkitFountainData) -> None:
         """Thin wrapper around ``_track_drink_event_into`` for the poll loop."""
@@ -466,7 +508,7 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
             self._prev_raw_state = data.raw_state
 
         self._reconcile_settings(data)
-        self._mode_cache = _reconcile_mode_into(data, self._mode_cache)
+        self._mode_cache = _reconcile_mode_into(data, self._mode_cache, self._mode_store)
 
         # Self-heal persistence: if the BLE client inferred a corrected alias
         # from the CMD 210 payload (e.g. when the original entry stored a MAC
@@ -561,6 +603,8 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
         if mode not in (MODE_NORMAL, MODE_SMART):
             _LOGGER.debug("apply_mode_optimistic: invalid mode %r ignored", mode)
             return
+        if self._mode_cache != mode:
+            _save_mode_state_into(self._mode_store, mode)
         self._mode_cache = mode
         if self.data is not None:
             self.data.mode = mode
