@@ -1,0 +1,104 @@
+name: Bug Report
+description: Create a report to help us fix a bug in ha-petkit
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for taking the time to report a bug!
+        Please complete the form below with as much detail as possible to help us reproduce and fix the issue.
+
+  - type: dropdown
+    id: model
+    attributes:
+      label: Petkit Device Model
+      description: Select your Petkit fountain model.
+      options:
+        - CTW3 (Eversweet Max 2 / Cordless)
+        - CTW2 (Eversweet Solo 2)
+        - W5C (Eversweet 3 Pro)
+        - W5N (Eversweet 3)
+        - W5 (Eversweet)
+        - W4X (Eversweet W4X)
+        - W4XUVC (Eversweet W4X UVC)
+        - Other / Not Sure
+    validations:
+      required: true
+
+  - type: input
+    id: firmware
+    attributes:
+      label: Firmware & Hardware Version
+      description: As reported in Home Assistant diagnostic sensors or the official Petkit app.
+      placeholder: e.g., Firmware 111, Hardware 1.0
+    validations:
+      required: false
+
+  - type: input
+    id: ha_version
+    attributes:
+      label: Home Assistant & Integration Version
+      description: Your version of Home Assistant and ha-petkit integration.
+      placeholder: e.g., HA 2024.9.1, ha-petkit v1.7.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: connection_type
+    attributes:
+      label: Bluetooth Connection Type
+      description: How is Home Assistant connected to your Petkit fountain?
+      options:
+        - Local Bluetooth Adapter (built-in / USB dongle)
+        - ESPHome Bluetooth Proxy
+        - Unsure / Multiple
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the Bug
+      description: A clear and concise description of what the bug is.
+      placeholder: Describe what happened...
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: Steps to reproduce the behavior.
+      placeholder: |
+        1. Go to '...'
+        2. Click on '...'
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: A clear and concise description of what you expected to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs & Debug Snippets
+      description: |
+        Please enable debug logging in integration options or add `custom_components.petkit_ble: debug` to your `configuration.yaml` and paste relevant logs here.
+      placeholder: Paste logs or petkit.log contents here...
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional Context
+      description: Add any other context or screenshots about the problem here.
+    validations:
+      required: false
