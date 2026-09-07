@@ -16,7 +16,6 @@ from bleak_retry_connector import establish_connection
 
 from .const import (
     ALIAS_CTW3,
-    ALIAS_W4XUVC,
     AUTH_STEP_DELAY,
     BLE_NOTIFY_UUID,
     BLE_WRITE_UUID,
@@ -150,7 +149,7 @@ class PetkitFountainData:
     @property
     def has_uvc(self) -> bool:
         """Return True if device features UV-C sterilization."""
-        return self.is_ctw3 or self.alias == ALIAS_W4XUVC
+        return self.is_ctw3
 
     @property
     def is_pump_running(self) -> bool:

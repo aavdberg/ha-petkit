@@ -14,7 +14,9 @@ from custom_components.petkit_ble.const import (
     ALIAS_CTW3,
     ALIAS_W4X,
     ALIAS_W4XUVC,
+    CONF_ADDRESS,
     CONF_MODEL,
+    CONF_NAME,
 )
 from custom_components.petkit_ble.number import NUMBER_DESCRIPTIONS
 from custom_components.petkit_ble.sensor import SENSOR_DESCRIPTIONS
@@ -57,11 +59,11 @@ async def test_w4x_entity_setup() -> None:
 
 @pytest.mark.asyncio
 async def test_w4xuvc_entity_setup() -> None:
-    """Verify that W4XUVC setup includes uvc_active but excludes battery/CTW3 entities."""
+    """Verify that W4XUVC setup excludes battery/CTW3 entities."""
     data = PetkitFountainData(alias=ALIAS_W4XUVC)
 
     supported_binary = [d.key for d in BINARY_SENSOR_DESCRIPTIONS if d.supported_fn(data)]
-    assert "uvc_active" in supported_binary
+    assert "uvc_active" not in supported_binary
     assert "pet_detected" not in supported_binary
     assert "on_ac_power" not in supported_binary
     assert "low_battery" not in supported_binary
@@ -93,9 +95,11 @@ async def test_async_setup_entry_w4x() -> None:
     """Test async_setup_entry for W4X to confirm entities added to HA."""
     hass = MagicMock()
     config_entry = MagicMock()
-    config_entry.data = {CONF_MODEL: ALIAS_W4X}
+    config_entry.data = {CONF_MODEL: ALIAS_W4X, CONF_ADDRESS: "AA:BB:CC:DD:EE:FF", CONF_NAME: "Petkit_W4X"}
 
     coordinator = MagicMock()
+    coordinator.hass = hass
+    coordinator.config_entry = config_entry
     coordinator.data = PetkitFountainData(alias=ALIAS_W4X)
     config_entry.runtime_data = coordinator
 

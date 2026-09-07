@@ -42,7 +42,7 @@ class TestHasCapabilities:
 
     def test_has_uvc(self) -> None:
         assert PetkitFountainData(alias=ALIAS_CTW3).has_uvc is True
-        assert PetkitFountainData(alias=ALIAS_W4XUVC).has_uvc is True
+        assert PetkitFountainData(alias=ALIAS_W4XUVC).has_uvc is False
         assert PetkitFountainData(alias=ALIAS_W4X).has_uvc is False
         assert PetkitFountainData(alias=ALIAS_W5).has_uvc is False
 
