@@ -25,7 +25,7 @@ class PetkitButtonDescription(ButtonEntityDescription):
 
 
 def _reset_filter_cmds(_coordinator: PetkitBleCoordinator) -> list[tuple[int, list[int]]]:
-    return [(CMD_RESET_FILTER, [0])]
+    return [(CMD_RESET_FILTER, [])]
 
 
 BUTTON_DESCRIPTIONS: tuple[PetkitButtonDescription, ...] = (
