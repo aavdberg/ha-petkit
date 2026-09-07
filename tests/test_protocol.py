@@ -153,9 +153,9 @@ class TestBuildSettingsPayloadCTW3:
     """Tests for build_settings_payload_ctw3."""
 
     def test_payload_length(self) -> None:
-        """CTW3 settings payload is 10 bytes."""
+        """CTW3 settings payload is 12 bytes."""
         result = build_settings_payload_ctw3(5, 10)
-        assert len(result) == 10
+        assert len(result) == 12
 
     def test_field_positions(self) -> None:
         """Verify each field is at the correct position."""
@@ -177,26 +177,26 @@ class TestBuildSettingsPayloadCTW3:
         # battery_sleep_time = 600 = 0x0258
         assert result[4] == 0x02
         assert result[5] == 0x58
-        assert result[6] == 1  # dnd_enabled
-        assert result[7] == 1  # led_switch
-        assert result[8] == 8  # led_brightness
+        assert result[6] == 1  # led_switch
+        assert result[7] == 8  # led_brightness
+        assert result[8] == 1  # dnd_enabled
         assert result[9] == 1  # child_lock
+        assert result[10] == 0  # smart_inductive_switch
+        assert result[11] == 0  # battery_inductive_switch
 
     def test_real_device_payload_decoding(self) -> None:
-        """Regression: payloads captured from a real CTW3 (fw 111).
+        """Regression: payloads captured from a real CTW3.
 
-        The user toggled LED on, adjusted brightness, then toggled LED off
-        between 18:52:13 and 18:52:48 in the 2026-05-03 debug log. After
-        rotating the byte layout, the led_switch / led_brightness fields
-        encoded by the integration must match the expected sequence.
+        Confirmed byte order matching Issue #114:
+        payload[6] = led_switch, payload[7] = led_brightness.
         """
         cases = [
-            # (led_switch, led_brightness, expected payload[6..9])
-            (1, 1, [0, 1, 1, 0]),
-            (0, 5, [0, 0, 5, 0]),
-            (1, 8, [0, 1, 8, 0]),
-            (1, 9, [0, 1, 9, 0]),
-            (0, 8, [0, 0, 8, 0]),
+            # (led_switch, led_brightness, expected payload[6..11])
+            (1, 1, [1, 1, 0, 0, 0, 0]),
+            (0, 5, [0, 5, 0, 0, 0, 0]),
+            (1, 8, [1, 8, 0, 0, 0, 0]),
+            (1, 9, [1, 9, 0, 0, 0, 0]),
+            (0, 8, [0, 8, 0, 0, 0, 0]),
         ]
         for led_switch, led_brightness, expected_tail in cases:
             payload = build_settings_payload_ctw3(
@@ -207,8 +207,8 @@ class TestBuildSettingsPayloadCTW3:
                 dnd_enabled=0,
                 child_lock=0,
             )
-            assert payload[6:10] == expected_tail, (
-                f"led_switch={led_switch}, brightness={led_brightness}: got {payload[6:10]}, expected {expected_tail}"
+            assert payload[6:12] == expected_tail, (
+                f"led_switch={led_switch}, brightness={led_brightness}: got {payload[6:12]}, expected {expected_tail}"
             )
 
 
