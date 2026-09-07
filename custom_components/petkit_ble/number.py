@@ -29,6 +29,7 @@ class PetkitNumberDescription(NumberEntityDescription):
     """Number description with value extractor and setter field name."""
 
     value_fn: Callable[[PetkitFountainData], float | None]
+    max_value_fn: Callable[[PetkitFountainData], float] | None = None
     supported_fn: Callable[[PetkitFountainData], bool] = lambda _: True
     available_fn: Callable[[PetkitFountainData], bool] = lambda _: True
     field_name: str
@@ -60,6 +61,7 @@ NUMBER_DESCRIPTIONS: tuple[PetkitNumberDescription, ...] = (
         translation_key="led_brightness",
         native_min_value=1,
         native_max_value=10,
+        max_value_fn=lambda d: 3.0 if d.is_ctw3 else 10.0,
         native_step=1,
         mode=NumberMode.SLIDER,
         value_fn=lambda d: d.led_brightness,
@@ -123,6 +125,13 @@ class PetkitBleNumber(PetkitBleEntity, NumberEntity):
         if not super().available:
             return False
         return self.entity_description.available_fn(self.coordinator.data)
+
+    @property
+    def native_max_value(self) -> float | None:
+        """Return the maximum value, dynamically calculated per model when applicable."""
+        if self.entity_description.max_value_fn is not None and self.coordinator.data is not None:
+            return self.entity_description.max_value_fn(self.coordinator.data)
+        return self.entity_description.native_max_value
 
     @property
     def native_value(self) -> float | None:
