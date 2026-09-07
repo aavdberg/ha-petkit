@@ -17,6 +17,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .ble_client import PetkitFountainData
+from .const import CONF_MODEL
 from .coordinator import PetkitBleCoordinator
 from .entity import PetkitBleEntity
 
@@ -28,6 +29,7 @@ class PetkitBinarySensorDescription(BinarySensorEntityDescription):
     """Binary sensor description with value and availability callables."""
 
     value_fn: Callable[[PetkitFountainData], bool]
+    supported_fn: Callable[[PetkitFountainData], bool] = lambda _: True
     available_fn: Callable[[PetkitFountainData], bool] = lambda _: True
 
 
@@ -66,6 +68,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[PetkitBinarySensorDescription, ...] = (
         translation_key="pet_detected",
         device_class=BinarySensorDeviceClass.OCCUPANCY,
         value_fn=lambda d: bool(d.detect_status),
+        supported_fn=lambda d: d.is_ctw3,
         available_fn=lambda d: d.is_ctw3,
     ),
     PetkitBinarySensorDescription(
@@ -74,6 +77,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[PetkitBinarySensorDescription, ...] = (
         device_class=BinarySensorDeviceClass.PLUG,
         # electric_status == 2 means AC power
         value_fn=lambda d: d.electric_status == 2,
+        supported_fn=lambda d: d.has_battery,
         available_fn=lambda d: d.is_ctw3,
     ),
     PetkitBinarySensorDescription(
@@ -81,6 +85,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[PetkitBinarySensorDescription, ...] = (
         translation_key="low_battery",
         device_class=BinarySensorDeviceClass.BATTERY,
         value_fn=lambda d: bool(d.low_battery),
+        supported_fn=lambda d: d.has_battery,
         available_fn=lambda d: d.is_ctw3,
     ),
     PetkitBinarySensorDescription(
@@ -88,12 +93,14 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[PetkitBinarySensorDescription, ...] = (
         translation_key="suspended",
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda d: not bool(d.suspend_status),
+        supported_fn=lambda d: d.is_ctw3,
         available_fn=lambda d: d.is_ctw3,
     ),
     PetkitBinarySensorDescription(
         key="uvc_active",
         translation_key="uvc_active",
         value_fn=lambda d: bool(d.module_status & 0x01),
+        supported_fn=lambda d: d.is_ctw3,
         available_fn=lambda d: d.is_ctw3,
     ),
 )
@@ -106,7 +113,12 @@ async def async_setup_entry(
 ) -> None:
     """Set up Petkit BLE binary sensors from a config entry."""
     coordinator: PetkitBleCoordinator = config_entry.runtime_data
-    async_add_entities(PetkitBleBinarySensor(coordinator, description) for description in BINARY_SENSOR_DESCRIPTIONS)
+    data = coordinator.data or PetkitFountainData(alias=config_entry.data.get(CONF_MODEL, ""))
+    async_add_entities(
+        PetkitBleBinarySensor(coordinator, description)
+        for description in BINARY_SENSOR_DESCRIPTIONS
+        if description.supported_fn(data)
+    )
 
 
 class PetkitBleBinarySensor(PetkitBleEntity, BinarySensorEntity):

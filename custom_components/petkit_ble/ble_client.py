@@ -142,6 +142,16 @@ class PetkitFountainData:
         return self.alias in CTW3_ALIASES
 
     @property
+    def has_battery(self) -> bool:
+        """Return True if device supports battery operation."""
+        return self.is_ctw3
+
+    @property
+    def has_uvc(self) -> bool:
+        """Return True if device features UV-C sterilization."""
+        return self.is_ctw3
+
+    @property
     def is_pump_running(self) -> bool:
         """Return True when the pump is actively running."""
         return self.running_status == 1

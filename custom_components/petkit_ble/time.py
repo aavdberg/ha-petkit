@@ -12,7 +12,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .ble_client import PetkitFountainData
-from .const import CMD_WRITE_SETTINGS, CTW3_ALIASES
+from .const import CMD_WRITE_SETTINGS, CONF_MODEL, CTW3_ALIASES
 from .coordinator import PetkitBleCoordinator
 from .entity import PetkitBleEntity
 from .protocol import build_full_settings_payload
@@ -37,6 +37,7 @@ class PetkitTimeDescription(TimeEntityDescription):
 
     value_fn: Callable[[PetkitFountainData], int]
     field_name: str
+    supported_fn: Callable[[PetkitFountainData], bool] = lambda _: True
     available_fn: Callable[[PetkitFountainData], bool] = lambda _: True
 
 
@@ -46,6 +47,7 @@ TIME_DESCRIPTIONS: tuple[PetkitTimeDescription, ...] = (
         translation_key="led_on_time",
         value_fn=lambda d: d.led_on_minutes,
         field_name="led_on_minutes",
+        supported_fn=lambda d: not d.is_ctw3,
         available_fn=lambda d: d.alias not in CTW3_ALIASES,
     ),
     PetkitTimeDescription(
@@ -53,6 +55,7 @@ TIME_DESCRIPTIONS: tuple[PetkitTimeDescription, ...] = (
         translation_key="led_off_time",
         value_fn=lambda d: d.led_off_minutes,
         field_name="led_off_minutes",
+        supported_fn=lambda d: not d.is_ctw3,
         available_fn=lambda d: d.alias not in CTW3_ALIASES,
     ),
     PetkitTimeDescription(
@@ -60,6 +63,7 @@ TIME_DESCRIPTIONS: tuple[PetkitTimeDescription, ...] = (
         translation_key="dnd_start_time",
         value_fn=lambda d: d.dnd_start_minutes,
         field_name="dnd_start_minutes",
+        supported_fn=lambda d: not d.is_ctw3,
         available_fn=lambda d: d.alias not in CTW3_ALIASES,
     ),
     PetkitTimeDescription(
@@ -67,6 +71,7 @@ TIME_DESCRIPTIONS: tuple[PetkitTimeDescription, ...] = (
         translation_key="dnd_end_time",
         value_fn=lambda d: d.dnd_end_minutes,
         field_name="dnd_end_minutes",
+        supported_fn=lambda d: not d.is_ctw3,
         available_fn=lambda d: d.alias not in CTW3_ALIASES,
     ),
 )
@@ -79,7 +84,8 @@ async def async_setup_entry(
 ) -> None:
     """Set up Petkit BLE time entities from a config entry."""
     coordinator: PetkitBleCoordinator = config_entry.runtime_data
-    async_add_entities(PetkitBleTime(coordinator, desc) for desc in TIME_DESCRIPTIONS)
+    data = coordinator.data or PetkitFountainData(alias=config_entry.data.get(CONF_MODEL, ""))
+    async_add_entities(PetkitBleTime(coordinator, desc) for desc in TIME_DESCRIPTIONS if desc.supported_fn(data))
 
 
 class PetkitBleTime(PetkitBleEntity, TimeEntity):
