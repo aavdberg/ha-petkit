@@ -27,6 +27,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .ble_client import PetkitFountainData
+from .const import CONF_MODEL
 from .coordinator import PetkitBleCoordinator
 from .entity import PetkitBleEntity
 
@@ -38,6 +39,7 @@ class PetkitSensorEntityDescription(SensorEntityDescription):
     """Sensor description with value extractor and optional availability check."""
 
     value_fn: Callable[[PetkitFountainData], float | int | str | None]
+    supported_fn: Callable[[PetkitFountainData], bool] = lambda _: True
     available_fn: Callable[[PetkitFountainData], bool] = lambda _: True
 
 
@@ -74,6 +76,7 @@ SENSOR_DESCRIPTIONS: tuple[PetkitSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.BATTERY,
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda d: d.battery_percent,
+        supported_fn=lambda d: d.has_battery,
         available_fn=lambda d: d.is_ctw3,
     ),
     PetkitSensorEntityDescription(
@@ -83,6 +86,7 @@ SENSOR_DESCRIPTIONS: tuple[PetkitSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda d: d.battery_voltage_mv,
+        supported_fn=lambda d: d.has_battery,
         available_fn=lambda d: d.is_ctw3,
     ),
     PetkitSensorEntityDescription(
@@ -152,6 +156,7 @@ SENSOR_DESCRIPTIONS: tuple[PetkitSensorEntityDescription, ...] = (
         translation_key="drink_count",
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda d: d.drink_event_count,
+        supported_fn=lambda d: d.is_ctw3,
         available_fn=lambda d: d.is_ctw3,
     ),
     PetkitSensorEntityDescription(
@@ -160,6 +165,7 @@ SENSOR_DESCRIPTIONS: tuple[PetkitSensorEntityDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
         value_fn=lambda d: d.state_tail.hex() if d.state_tail else None,
+        supported_fn=lambda d: d.is_ctw3,
         available_fn=lambda d: d.is_ctw3 and bool(d.state_tail),
     ),
 )
@@ -172,7 +178,12 @@ async def async_setup_entry(
 ) -> None:
     """Set up Petkit BLE sensors from a config entry."""
     coordinator: PetkitBleCoordinator = config_entry.runtime_data
-    async_add_entities(PetkitBleSensor(coordinator, description) for description in SENSOR_DESCRIPTIONS)
+    data = coordinator.data or PetkitFountainData(alias=config_entry.data.get(CONF_MODEL, ""))
+    async_add_entities(
+        PetkitBleSensor(coordinator, description)
+        for description in SENSOR_DESCRIPTIONS
+        if description.supported_fn(data)
+    )
 
 
 class PetkitBleSensor(PetkitBleEntity, SensorEntity):

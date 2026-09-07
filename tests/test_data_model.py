@@ -9,6 +9,8 @@ import pytest
 from custom_components.petkit_ble.ble_client import PetkitBleClient, PetkitFountainData
 from custom_components.petkit_ble.const import (
     ALIAS_CTW3,
+    ALIAS_W4X,
+    ALIAS_W4XUVC,
     ALIAS_W5,
     ALIAS_W5C,
 )
@@ -28,6 +30,21 @@ class TestIsCtw3:
     def test_empty_alias(self) -> None:
         data = PetkitFountainData(alias="")
         assert data.is_ctw3 is False
+
+
+class TestHasCapabilities:
+    """Tests for has_battery and has_uvc properties."""
+
+    def test_has_battery(self) -> None:
+        assert PetkitFountainData(alias=ALIAS_CTW3).has_battery is True
+        assert PetkitFountainData(alias=ALIAS_W4X).has_battery is False
+        assert PetkitFountainData(alias=ALIAS_W5).has_battery is False
+
+    def test_has_uvc(self) -> None:
+        assert PetkitFountainData(alias=ALIAS_CTW3).has_uvc is True
+        assert PetkitFountainData(alias=ALIAS_W4XUVC).has_uvc is True
+        assert PetkitFountainData(alias=ALIAS_W4X).has_uvc is False
+        assert PetkitFountainData(alias=ALIAS_W5).has_uvc is False
 
 
 class TestIsPumpRunning:
