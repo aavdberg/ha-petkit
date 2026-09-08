@@ -46,9 +46,3 @@ jobs:
             `custom_components/petkit_ble` to your HA `config/custom_components/` folder.
 
             See [README](https://github.com/aavdberg/ha-petkit#testing-the-dev-branch) for full instructions.
-
-  version-dropdown:
-    needs: pre-release
-    uses: ./.github/workflows/update-version-dropdown.yml
-    permissions:
-      contents: write
