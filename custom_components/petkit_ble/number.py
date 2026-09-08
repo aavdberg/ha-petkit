@@ -129,8 +129,11 @@ class PetkitBleNumber(PetkitBleEntity, NumberEntity):
     @property
     def native_max_value(self) -> float | None:
         """Return the maximum value, dynamically calculated per model when applicable."""
-        if self.entity_description.max_value_fn is not None and self.coordinator.data is not None:
-            return self.entity_description.max_value_fn(self.coordinator.data)
+        if self.entity_description.max_value_fn is not None:
+            data = self.coordinator.data or PetkitFountainData(
+                alias=self.coordinator.config_entry.data.get(CONF_MODEL, "")
+            )
+            return self.entity_description.max_value_fn(data)
         return self.entity_description.native_max_value
 
     @property

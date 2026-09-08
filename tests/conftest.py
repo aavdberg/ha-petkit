@@ -29,6 +29,7 @@ _HA_STUBS = [
     "homeassistant.core",
     "homeassistant.helpers",
     "homeassistant.helpers.device_registry",
+    "homeassistant.helpers.entity",
     "homeassistant.helpers.entity_platform",
     "homeassistant.helpers.storage",
     "homeassistant.helpers.update_coordinator",
