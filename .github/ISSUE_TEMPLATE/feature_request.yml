@@ -78,6 +78,8 @@ body:
     id: additional_context
     attributes:
       label: Additional Context & Debug Logs
-      description: Add any screenshot, BLE captures, or `petkit.log` debug snippets if applicable.
+      description: |
+        Add any screenshots, BLE captures, or `petkit.log` debug snippets if applicable.
+        If attaching logs, please include a brief timestamped timeline of your actions (e.g. `11:04:15` Turned ON, `11:04:30` Changed mode) to help correlate actions with BLE events.
     validations:
       required: false

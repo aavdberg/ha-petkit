@@ -179,7 +179,9 @@ CTW2   → CTW2
 | `dev` | Development & testing — all features merge here first |
 | `feature/*` | Individual features — PR to `dev` |
 | `fix/*` | Bug fixes — PR to `dev` |
-| `chore/*` | Non-code changes (docs, CI, deps) — PR to `dev` |
+| `chore/*` | Non-code changes (docs, CI, repo tooling) — PR directly to `main` if completely unrelated to integration code |
+
+> **Note:** Changes unrelated to the Home Assistant integration (e.g. CI workflows, docs, repo scripts) should be kept separate from integration changes and can be merged directly into `main` via PR without triggering dev beta pre-releases.
 
 Both `main` and `dev` are protected: PRs required, ruff lint must pass.
 
@@ -277,6 +279,12 @@ When promoting changes from `dev` to `main` for a release:
    squash** — the dev PR history must be preserved on `main`.
 7. Verify `release.yml` published a non-prerelease `vX.Y.0` GitHub
    Release.
+8. **Immediately after releasing to `main`**: Bump `manifest.json` on `dev`
+   to the next minor version (e.g. from `1.10.0` to `1.11.0`) via a `chore` PR on `dev`.
+   This ensures subsequent beta builds on `dev` (e.g. `v1.11.0-beta.1`) have a higher
+   version number than the stable release (e.g. `v1.10.0`) so HACS beta users receive updates.
+   If any invalid post-release beta tags (matching the old version) were automatically
+   created during the release PR merge, delete them using `gh release delete <tag> --yes --cleanup-tag`.
 
 ---
 
