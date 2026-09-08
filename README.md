@@ -22,6 +22,9 @@ Communicates directly over BLE — no cloud, no API token, no Petkit account req
 
 - **Sensors**: filter life %, pump runtime, water purified, energy today, filter days remaining, battery (CTW3), RSSI
 - **Binary sensors**: pump running, water missing, filter warning, hardware failure, DND, pet detected (CTW3), AC power (CTW3), low battery (CTW3)
+- **Select**: operating mode (Normal / Smart)
+- **Number**: Smart mode work duration & sleep duration (minutes), LED brightness (CTW3)
+- **Time**: Do Not Disturb (DND) start & end times, LED schedule start & end times (CTW3)
 - **Buttons**: reset filter, pump on, pump off
 - **Switch**: power on/off
 - **ESPHome Bluetooth proxy support** — works transparently via Home Assistant's native Bluetooth stack
@@ -58,7 +61,7 @@ Extract and copy the `custom_components/petkit_ble` folder.
 
 ### Option B — HACS beta release (recommended for ongoing testing)
 
-Every push to `dev` automatically creates a **pre-release** tag (e.g. `v1.0.0-dev.202604071200`).
+Every PR merged into `dev` automatically creates a **pre-release** tag (e.g. `v1.9.0-beta.1`).
 
 1. In HACS, open the **Petkit BLE** repository
 2. Select the **⋮ menu → Show details**
@@ -167,6 +170,7 @@ feature/* or fix/*
 | `dev` | Integration & testing | ✅ PR required + lint must pass |
 | `feature/*` | New functionality | Free — PR to `dev` |
 | `fix/*` | Bug fixes | Free — PR to `dev` |
+| `chore/*` | Non-code changes (docs, CI, repo tooling) | Free — PR to `dev` (or direct to `main` if unrelated to integration) |
 
 ### Contributing
 
