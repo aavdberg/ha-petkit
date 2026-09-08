@@ -100,8 +100,8 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[PetkitBinarySensorDescription, ...] = (
         key="uvc_active",
         translation_key="uvc_active",
         value_fn=lambda d: bool(d.module_status & 0x01),
-        supported_fn=lambda d: d.is_ctw3,
-        available_fn=lambda d: d.is_ctw3,
+        supported_fn=lambda d: d.has_uvc,
+        available_fn=lambda d: d.has_uvc,
     ),
 )
 
