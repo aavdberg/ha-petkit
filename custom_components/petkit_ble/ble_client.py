@@ -8,6 +8,7 @@ import logging
 import math
 import struct
 from dataclasses import dataclass
+from datetime import datetime
 
 from bleak import BleakClient
 from bleak.backends.device import BLEDevice
@@ -104,6 +105,10 @@ class PetkitFountainData:
 
     # Drink statistics
     drink_event_count: int = 0
+
+    # Cleaning guidance
+    last_cleaned: datetime | None = None
+    days_since_clean: int | None = None
 
     # CMD 66 battery (raw ADC voltage, little-endian, for non-CTW3)
     battery_voltage_mv_66: int = 0

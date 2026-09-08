@@ -67,6 +67,8 @@
       "power": {"name": "Vermogen"},
       "energy_today_wh": {"name": "Energieverbruik vandaag (Wh)"},
       "filter_days_remaining": {"name": "Resterende filterdagen"},
+      "days_since_clean": {"name": "Dagen sinds schoonmaak"},
+      "last_cleaned": {"name": "Laatst schoongemaakt"},
       "firmware": {"name": "Firmware"},
       "hardware_version": {"name": "Hardwareversie"},
       "rssi": {"name": "Signaalsterkte"},
@@ -86,7 +88,8 @@
       "uvc_active": {"name": "UVC-sterilisatie"}
     },
     "button": {
-      "reset_filter": {"name": "Filter resetten"}
+      "reset_filter": {"name": "Filter resetten"},
+      "reset_clean": {"name": "Schoonmaakteller resetten"}
     },
     "number": {
       "smart_work_minutes": {"name": "Smart-modus werktijd"},

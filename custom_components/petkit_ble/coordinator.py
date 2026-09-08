@@ -6,7 +6,7 @@ import asyncio
 import logging
 import time
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.bluetooth import (
@@ -286,6 +286,82 @@ async def _track_drink_event_into(
             _LOGGER.debug("Failed to persist drink-count store: %s", exc)
 
 
+@dataclass
+class _LastCleanedState:
+    """Mutable holder for the last cleaned timestamp state.
+
+    Lives on the coordinator across polls. Extracted into a dataclass so the
+    persistence and calculation logic can be unit-tested via free functions
+    (``_load_clean_state_into`` / ``_apply_clean_state_into``) without
+    instantiating the full ``DataUpdateCoordinator``.
+    """
+
+    last_cleaned_iso: str = ""
+
+
+def _parse_iso_timestamp(raw_iso: str) -> datetime | None:
+    """Parse ISO timestamp string cleanly."""
+    if not raw_iso or not isinstance(raw_iso, str):
+        return None
+    try:
+        dt = datetime.fromisoformat(raw_iso)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=UTC)
+        return dt
+    except (TypeError, ValueError):
+        return None
+
+
+async def _load_clean_state_into(state: _LastCleanedState, store: Any) -> None:
+    """Populate ``state`` from a ``Store`` snapshot if one exists.
+
+    Storage failures are swallowed at debug level — they must never block
+    integration setup. Initializes to current time if store is missing or corrupt.
+    """
+    try:
+        stored = await store.async_load()
+    except Exception as exc:
+        _LOGGER.debug("Failed to load last-cleaned store: %s", exc)
+        stored = None
+
+    if stored and isinstance(stored, dict) and stored.get("last_cleaned"):
+        raw_iso = str(stored["last_cleaned"])
+        if _parse_iso_timestamp(raw_iso) is not None:
+            state.last_cleaned_iso = raw_iso
+            return
+
+    now_iso = dt_util.now().isoformat()
+    state.last_cleaned_iso = now_iso
+    try:
+        await store.async_save({"last_cleaned": now_iso})
+    except Exception as exc:
+        _LOGGER.debug("Failed to save initial last-cleaned store: %s", exc)
+
+
+def _apply_clean_state_into(
+    state: _LastCleanedState,
+    data: PetkitFountainData,
+) -> None:
+    """Calculate and set ``last_cleaned`` and ``days_since_clean`` on ``data``."""
+    if not state.last_cleaned_iso:
+        state.last_cleaned_iso = dt_util.now().isoformat()
+
+    cleaned_dt = _parse_iso_timestamp(state.last_cleaned_iso)
+    if cleaned_dt is None:
+        cleaned_dt = dt_util.now()
+        if isinstance(cleaned_dt, datetime) and cleaned_dt.tzinfo is None:
+            cleaned_dt = cleaned_dt.replace(tzinfo=UTC)
+        state.last_cleaned_iso = cleaned_dt.isoformat()
+
+    data.last_cleaned = cleaned_dt
+    now = dt_util.now()
+    if isinstance(now, datetime) and now.tzinfo is None:
+        now = now.replace(tzinfo=UTC)
+
+    delta_seconds = max(0.0, (now - cleaned_dt).total_seconds())
+    data.days_since_clean = int(delta_seconds // 86400)
+
+
 class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
     """Coordinator that polls a Petkit fountain over BLE."""
 
@@ -315,6 +391,10 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
         self._drink_store: Store = Store(hass, version=1, key=f"{DOMAIN}_drink_count_{config_entry.entry_id}")
         self._mode_store: Store = Store(hass, version=1, key=f"{DOMAIN}_mode_{config_entry.entry_id}")
 
+        # Track cleaning guidance state (last cleaned timestamp)
+        self._clean_state = _LastCleanedState()
+        self._clean_store: Store = Store(hass, version=1, key=f"{DOMAIN}_last_cleaned_{config_entry.entry_id}")
+
         # Cache for settings fields (CMD 211 / CMD 221). See _SETTINGS_FIELDS
         # docstring for rationale. Populated either by a successful CMD 211
         # parse or by an entity-driven write via apply_setting_optimistic().
@@ -338,14 +418,28 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
         )
 
     async def async_load_persistent_state(self) -> None:
-        """Load the persisted drink-event counter and mode from disk.
+        """Load the persisted drink-event counter, mode, and last-cleaned timestamp from disk.
 
         Called once before the first refresh so a Home Assistant restart or
-        integration reload no longer wipes today's count to zero or loses the
-        last known operation mode.
+        integration reload no longer wipes today's count to zero, loses the
+        last known operation mode, or resets the last-cleaned timestamp.
         """
         await _load_drink_state_into(self._drink_state, self._drink_store)
         self._mode_cache = await _load_mode_state_into(self._mode_store)
+        await _load_clean_state_into(self._clean_state, self._clean_store)
+
+    async def async_reset_last_cleaned(self) -> None:
+        """Reset the last-cleaned timestamp to current time and persist."""
+        now_iso = dt_util.now().isoformat()
+        self._clean_state.last_cleaned_iso = now_iso
+        try:
+            await self._clean_store.async_save({"last_cleaned": now_iso})
+        except Exception as exc:
+            _LOGGER.debug("Failed to save last-cleaned store on reset: %s", exc)
+
+        if self.data is not None:
+            _apply_clean_state_into(self._clean_state, self.data)
+            self.async_update_listeners()
 
     async def _track_drink_event(self, data: PetkitFountainData) -> None:
         """Thin wrapper around ``_track_drink_event_into`` for the poll loop."""
@@ -532,6 +626,9 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
         # Track drink events. Counter resets daily and persists across
         # restarts. See ``_track_drink_event`` for full rationale.
         await self._track_drink_event(data)
+
+        # Apply persistent cleaning guidance state
+        _apply_clean_state_into(self._clean_state, data)
 
         # RSSI from the most recent BLE advertisement (no connection required)
         service_info = async_last_service_info(self.hass, self._address, connectable=False)
