@@ -439,7 +439,7 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
 
         if self.data is not None:
             _apply_clean_state_into(self._clean_state, self.data)
-            self.async_update_listeners()
+            self.async_set_updated_data(self.data)
 
     async def _track_drink_event(self, data: PetkitFountainData) -> None:
         """Thin wrapper around ``_track_drink_event_into`` for the poll loop."""
