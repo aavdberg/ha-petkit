@@ -9,6 +9,8 @@ import pytest
 from custom_components.petkit_ble.ble_client import PetkitBleClient, PetkitFountainData
 from custom_components.petkit_ble.const import (
     ALIAS_CTW3,
+    ALIAS_W4X,
+    ALIAS_W4XUVC,
     ALIAS_W5,
     ALIAS_W5C,
 )
@@ -28,6 +30,21 @@ class TestIsCtw3:
     def test_empty_alias(self) -> None:
         data = PetkitFountainData(alias="")
         assert data.is_ctw3 is False
+
+
+class TestHasCapabilities:
+    """Tests for has_battery and has_uvc properties."""
+
+    def test_has_battery(self) -> None:
+        assert PetkitFountainData(alias=ALIAS_CTW3).has_battery is True
+        assert PetkitFountainData(alias=ALIAS_W4X).has_battery is False
+        assert PetkitFountainData(alias=ALIAS_W5).has_battery is False
+
+    def test_has_uvc(self) -> None:
+        assert PetkitFountainData(alias=ALIAS_CTW3).has_uvc is True
+        assert PetkitFountainData(alias=ALIAS_W4XUVC).has_uvc is True
+        assert PetkitFountainData(alias=ALIAS_W4X).has_uvc is False
+        assert PetkitFountainData(alias=ALIAS_W5).has_uvc is False
 
 
 class TestIsPumpRunning:
@@ -324,7 +341,8 @@ class TestStateParsers:
         assert data.dnd_end_minutes == 420
         assert data.is_locked == 1
 
-    def test_parse_config_ctw3(self) -> None:
+    @pytest.mark.asyncio
+    async def test_parse_config_ctw3(self) -> None:
         """Parse a CTW3 CMD 211 config payload."""
         import struct
 
@@ -333,9 +351,9 @@ class TestStateParsers:
         buf[1] = 7  # smart_sleep
         struct.pack_into(">H", buf, 2, 300)  # battery_work_time
         struct.pack_into(">H", buf, 4, 600)  # battery_sleep_time
-        buf[6] = 1  # dnd_enabled
-        buf[7] = 1  # led_switch
-        buf[8] = 5  # led_brightness
+        buf[6] = 1  # led_switch
+        buf[7] = 5  # led_brightness
+        buf[8] = 1  # dnd_enabled
         buf[9] = 0  # child_lock
 
         data = PetkitFountainData(alias=ALIAS_CTW3)

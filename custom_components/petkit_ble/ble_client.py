@@ -16,6 +16,7 @@ from bleak_retry_connector import establish_connection
 
 from .const import (
     ALIAS_CTW3,
+    ALIAS_W4XUVC,
     AUTH_STEP_DELAY,
     BLE_NOTIFY_UUID,
     BLE_WRITE_UUID,
@@ -140,6 +141,16 @@ class PetkitFountainData:
     def is_ctw3(self) -> bool:
         """Return True if device uses the CTW3 extended state format."""
         return self.alias in CTW3_ALIASES
+
+    @property
+    def has_battery(self) -> bool:
+        """Return True if device supports battery operation."""
+        return self.is_ctw3
+
+    @property
+    def has_uvc(self) -> bool:
+        """Return True if device features UV-C sterilization."""
+        return self.is_ctw3 or self.alias == ALIAS_W4XUVC
 
     @property
     def is_pump_running(self) -> bool:
@@ -553,20 +564,19 @@ class PetkitBleClient:
     def _parse_config_ctw3(data: PetkitFountainData, payload: bytes) -> None:
         """Parse CMD 211 response for CTW3.
 
-        Layout matches build_settings_payload_ctw3 (idx 6=dnd, 7=led_switch,
-        8=led_brightness, 9=child_lock). Note: CTW3 firmware 111 never
-        actually replies to CMD 211, so this parser is currently unreached
-        on real hardware but kept symmetric with the builder.
+        Layout matches build_settings_payload_ctw3 (idx 6=led_switch,
+        7=led_brightness, 8=dnd, 9=child_lock).
         """
-        if len(payload) < 9:
+        if len(payload) < 8:
             return
         data.smart_time_on = payload[0]
         data.smart_time_off = payload[1]
         data.battery_work_time = struct.unpack_from(">H", payload, 2)[0]
         data.battery_sleep_time = struct.unpack_from(">H", payload, 4)[0]
-        data.do_not_disturb_switch = payload[6]
-        data.led_switch = payload[7]
-        data.led_brightness = payload[8]
+        data.led_switch = payload[6]
+        data.led_brightness = payload[7]
+        if len(payload) >= 9:
+            data.do_not_disturb_switch = payload[8]
         if len(payload) >= 10:
             data.is_locked = payload[9]
         data.config_loaded = True

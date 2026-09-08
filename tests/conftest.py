@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -28,6 +29,7 @@ _HA_STUBS = [
     "homeassistant.core",
     "homeassistant.helpers",
     "homeassistant.helpers.device_registry",
+    "homeassistant.helpers.entity",
     "homeassistant.helpers.entity_platform",
     "homeassistant.helpers.storage",
     "homeassistant.helpers.update_coordinator",
@@ -41,9 +43,67 @@ _HA_STUBS = [
     "voluptuous",
 ]
 
+from dataclasses import dataclass  # noqa: E402
+
 for mod_name in _HA_STUBS:
     if mod_name not in sys.modules:
-        sys.modules[mod_name] = MagicMock()
+        mod = MagicMock()
+        mod.__path__ = []
+        sys.modules[mod_name] = mod
+
+
+class StubEntity:
+    """Stub base class for Home Assistant entity classes in plain pytest runs."""
+
+    def __init__(self, *args, **kwargs) -> None:
+        pass
+
+    def __class_getitem__(cls, item: Any) -> type:
+        return cls
+
+
+@dataclass(frozen=True, kw_only=True)
+class StubEntityDescription:
+    """Stub entity description for plain pytest runs."""
+
+    key: str
+    translation_key: str | None = None
+    device_class: Any = None
+    entity_category: Any = None
+    native_unit_of_measurement: Any = None
+    state_class: Any = None
+    icon: str | None = None
+    options: list[str] | None = None
+    native_max_value: float | None = None
+    native_min_value: float | None = None
+    native_step: float | None = None
+    suggested_display_precision: int | None = None
+    entity_registry_enabled_default: bool = True
+    mode: Any = None
+
+
+for module_key, class_name in [
+    ("homeassistant.helpers.update_coordinator", "CoordinatorEntity"),
+    ("homeassistant.components.binary_sensor", "BinarySensorEntity"),
+    ("homeassistant.components.number", "NumberEntity"),
+    ("homeassistant.components.select", "SelectEntity"),
+    ("homeassistant.components.sensor", "SensorEntity"),
+    ("homeassistant.components.button", "ButtonEntity"),
+    ("homeassistant.components.switch", "SwitchEntity"),
+    ("homeassistant.components.time", "TimeEntity"),
+]:
+    setattr(sys.modules[module_key], class_name, StubEntity)
+
+for module_key, class_name in [
+    ("homeassistant.components.binary_sensor", "BinarySensorEntityDescription"),
+    ("homeassistant.components.number", "NumberEntityDescription"),
+    ("homeassistant.components.select", "SelectEntityDescription"),
+    ("homeassistant.components.sensor", "SensorEntityDescription"),
+    ("homeassistant.components.button", "ButtonEntityDescription"),
+    ("homeassistant.components.switch", "SwitchEntityDescription"),
+    ("homeassistant.components.time", "TimeEntityDescription"),
+]:
+    setattr(sys.modules[module_key], class_name, StubEntityDescription)
 
 # Make ``homeassistant.util.dt.now()`` behave like the real helper so date /
 # timezone-dependent code under test can call ``.date().isoformat()`` on it.
