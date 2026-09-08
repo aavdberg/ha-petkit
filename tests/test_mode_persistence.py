@@ -14,12 +14,13 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from custom_components.petkit_ble.ble_client import PetkitFountainData
-from custom_components.petkit_ble.const import ALIAS_CTW3, MODE_NORMAL, MODE_SMART
+from custom_components.petkit_ble.const import ALIAS_CTW3, ALIAS_W5, MODE_NORMAL, MODE_SMART
 from custom_components.petkit_ble.coordinator import (
     _load_mode_state_into,
     _reconcile_mode_into,
     _save_mode_state_into,
 )
+from custom_components.petkit_ble.number import NUMBER_DESCRIPTIONS
 
 
 def _make_store() -> MagicMock:
@@ -115,7 +116,8 @@ class TestModeReconciliationAndSave:
         assert new_mode == MODE_NORMAL
 
 
-def test_save_mode_state_into_schedules_save() -> None:
+@pytest.mark.asyncio
+async def test_save_mode_state_into_schedules_save() -> None:
     store = _make_store()
     _save_mode_state_into(store, MODE_SMART)
 
@@ -124,10 +126,8 @@ def test_save_mode_state_into_schedules_save() -> None:
     assert save_func() == {"mode": MODE_SMART}
 
 
-def test_led_brightness_max_value_ctw3_vs_generic() -> None:
-    from custom_components.petkit_ble.const import ALIAS_W5
-    from custom_components.petkit_ble.number import NUMBER_DESCRIPTIONS
-
+@pytest.mark.asyncio
+async def test_led_brightness_max_value_ctw3_vs_generic() -> None:
     desc = next(d for d in NUMBER_DESCRIPTIONS if d.key == "led_brightness")
     ctw3_data = PetkitFountainData(alias=ALIAS_CTW3)
     w5_data = PetkitFountainData(alias=ALIAS_W5)
