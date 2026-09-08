@@ -118,6 +118,7 @@ body:
       label: Logs & Debug Snippets
       description: |
         Please enable debug logging in integration options or add `custom_components.petkit_ble: debug` to your `configuration.yaml` and paste relevant logs here.
+        If possible, please include a brief timestamped timeline of your actions (e.g. `11:04:15` Turned ON, `11:04:30` Removed tank, `11:04:45` Replaced tank) so we can correlate your actions with log events.
       placeholder: Paste logs or petkit.log contents here...
     validations:
       required: false
