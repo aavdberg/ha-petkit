@@ -179,7 +179,9 @@ CTW2   → CTW2
 | `dev` | Development & testing — all features merge here first |
 | `feature/*` | Individual features — PR to `dev` |
 | `fix/*` | Bug fixes — PR to `dev` |
-| `chore/*` | Non-code changes (docs, CI, deps) — PR to `dev` |
+| `chore/*` | Non-code changes (docs, CI, repo tooling) — PR directly to `main` if completely unrelated to integration code |
+
+> **Note:** Changes unrelated to the Home Assistant integration (e.g. CI workflows, docs, repo scripts) should be kept separate from integration changes and can be merged directly into `main` via PR without triggering dev beta pre-releases.
 
 Both `main` and `dev` are protected: PRs required, ruff lint must pass.
 
