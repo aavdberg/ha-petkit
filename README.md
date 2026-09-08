@@ -23,8 +23,8 @@ Communicates directly over BLE — no cloud, no API token, no Petkit account req
 - **Sensors**: filter life %, pump runtime, water purified, energy today, filter days remaining, battery (CTW3), RSSI
 - **Binary sensors**: pump running, water missing, filter warning, hardware failure, DND, pet detected (CTW3), AC power (CTW3), low battery (CTW3)
 - **Select**: operating mode (Normal / Smart)
-- **Number**: Smart mode work duration & sleep duration (minutes), LED brightness (CTW3)
-- **Time**: Do Not Disturb (DND) start & end times, LED schedule start & end times (CTW3)
+- **Number**: Smart mode work & sleep duration (minutes), LED brightness, battery work & sleep duration (CTW3)
+- **Time**: Do Not Disturb (DND) start & end times, LED schedule start & end times (non-CTW3)
 - **Buttons**: reset filter, pump on, pump off
 - **Switch**: power on/off
 - **ESPHome Bluetooth proxy support** — works transparently via Home Assistant's native Bluetooth stack
