@@ -12,13 +12,22 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Get version from manifest
+      - name: Get version from manifest and calculate beta tag
         id: version
         run: |
           VERSION=$(python3 -c "import json; print(json.load(open('custom_components/petkit_ble/manifest.json'))['version'])")
-          DATE=$(date +'%Y%m%d%H%M')
-          TAG="v${VERSION}-dev.${DATE}"
+          git fetch --tags
+          LATEST_BETA=$(git tag --list "v${VERSION}-beta.*" | sort -V | tail -n 1)
+          if [ -z "$LATEST_BETA" ]; then
+            NEXT_BETA="1"
+          else
+            BETA_NUM=$(echo "$LATEST_BETA" | sed -E 's/.*-beta\.([0-9]+)/\1/')
+            NEXT_BETA=$((BETA_NUM + 1))
+          fi
+          TAG="v${VERSION}-beta.${NEXT_BETA}"
           echo "tag=${TAG}" >> $GITHUB_OUTPUT
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
