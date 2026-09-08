@@ -341,7 +341,8 @@ class TestStateParsers:
         assert data.dnd_end_minutes == 420
         assert data.is_locked == 1
 
-    def test_parse_config_ctw3(self) -> None:
+    @pytest.mark.asyncio
+    async def test_parse_config_ctw3(self) -> None:
         """Parse a CTW3 CMD 211 config payload."""
         import struct
 
@@ -350,9 +351,9 @@ class TestStateParsers:
         buf[1] = 7  # smart_sleep
         struct.pack_into(">H", buf, 2, 300)  # battery_work_time
         struct.pack_into(">H", buf, 4, 600)  # battery_sleep_time
-        buf[6] = 1  # dnd_enabled
-        buf[7] = 1  # led_switch
-        buf[8] = 5  # led_brightness
+        buf[6] = 1  # led_switch
+        buf[7] = 5  # led_brightness
+        buf[8] = 1  # dnd_enabled
         buf[9] = 0  # child_lock
 
         data = PetkitFountainData(alias=ALIAS_CTW3)
