@@ -59,11 +59,11 @@ async def test_w4x_entity_setup() -> None:
 
 @pytest.mark.asyncio
 async def test_w4xuvc_entity_setup() -> None:
-    """Verify that W4XUVC setup includes UVC entity but excludes battery/CTW3 entities."""
+    """Verify that W4XUVC setup excludes battery/CTW3 entities."""
     data = PetkitFountainData(alias=ALIAS_W4XUVC)
 
     supported_binary = [d.key for d in BINARY_SENSOR_DESCRIPTIONS if d.supported_fn(data)]
-    assert "uvc_active" in supported_binary
+    assert "uvc_active" not in supported_binary
     assert "pet_detected" not in supported_binary
     assert "on_ac_power" not in supported_binary
     assert "low_battery" not in supported_binary
