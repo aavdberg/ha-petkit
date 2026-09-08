@@ -134,4 +134,3 @@ async def test_led_brightness_max_value_ctw3_vs_generic() -> None:
 
     assert desc.max_value_fn(ctw3_data) == 3.0
     assert desc.max_value_fn(w5_data) == 10.0
-    assert desc.max_value_fn(w5_data) == 10.0
