@@ -283,6 +283,8 @@ When promoting changes from `dev` to `main` for a release:
    to the next minor version (e.g. `1.10.0`) via a `chore` PR on `dev`.
    This ensures subsequent beta builds on `dev` (`v1.10.0-beta.1`) have a higher
    version number than the stable release (`v1.9.0`) so HACS beta users receive updates.
+   If any invalid post-release beta tags (matching the old version) were automatically
+   created during the release PR merge, delete them using `gh release delete <tag> --yes --cleanup-tag`.
 
 ---
 
