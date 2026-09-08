@@ -279,6 +279,10 @@ When promoting changes from `dev` to `main` for a release:
    squash** — the dev PR history must be preserved on `main`.
 7. Verify `release.yml` published a non-prerelease `vX.Y.0` GitHub
    Release.
+8. **Immediately after releasing to `main`**: Bump `manifest.json` on `dev`
+   to the next minor version (e.g. `1.10.0`) via a `chore` PR on `dev`.
+   This ensures subsequent beta builds on `dev` (`v1.10.0-beta.1`) have a higher
+   version number than the stable release (`v1.9.0`) so HACS beta users receive updates.
 
 ---
 
