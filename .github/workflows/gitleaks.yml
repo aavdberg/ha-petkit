@@ -1,0 +1,25 @@
+name: Secret scan
+
+on:
+  push:
+    branches: ["main", "dev"]
+  pull_request:
+    branches: ["main", "dev"]
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Scan for secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

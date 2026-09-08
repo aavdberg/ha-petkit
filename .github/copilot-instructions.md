@@ -216,18 +216,18 @@ Every change — no matter how small — **must** follow these steps in order:
    ```
    (Or use the GitHub API `get_reviews` / `get_review_comments` methods.)
    Only proceed when the review is present. Then:
-   - Retrieve all review comments using the GitHub API / `gh` CLI.
-   - If there are comments or suggestions, **fix them** in a new commit on the same branch.
-   - Reply to each review thread explaining what was fixed.
-   - **Resolve** all review threads (using GraphQL `resolveReviewThread` mutation).
-   - Push the fixes and wait for CI to pass again, then re-check the review.
-   - Repeat until there are no unresolved comments.
+   - Retrieve and read all review comments using the GitHub API / `gh` CLI.
+   - Evaluate each comment/suggestion to decide whether a code fix is needed or not.
+   - Add a comment (reply) to each review thread explaining the decision or what fix was implemented.
+   - If a code fix is needed, push the commit, wait for CI, and re-check.
+   - **Resolve** the review conversation threads (using GraphQL `resolveReviewThread` / `resolve_thread` tool).
+   - Repeat until all review conversations are resolved.
 9. **Merge** — Once CI passes and all review comments are resolved, merge the PR into `dev`:
    ```
    gh pr merge <PR_NUMBER> --squash --delete-branch
    ```
 10. **Verify dev pre-release** — After the merge, confirm that the `Pre-release`
-    workflow created a new `v<version>-dev.<timestamp>` tag/release on `dev`:
+    workflow created a new `v<version>-beta.<N>` tag/release on `dev` (e.g. `v1.8.0-beta.1`):
     ```
     gh run list --workflow pre-release.yml --limit 1
     gh release list --limit 3
@@ -243,23 +243,17 @@ Even as admin (bypassed protection), direct pushes skip CI and break the audit t
 
 ## Releasing — promoting `dev` → `main`
 
-When promoting `dev` to `main` for a stable release, the `manifest.json`
-version **must be bumped to a new minor**, never just published with the
-trailing dev patch number. Each merge of `dev` into `main` represents a
-batch of user-visible changes accumulated during the dev cycle, and minor
-versions are the right granularity for "shipped to all HACS users".
+When promoting changes from `dev` to `main` for a release:
+- Each PR merged into `dev` creates a beta pre-release `v<version>-beta.<N>`.
+- When an issue / PR is confirmed good and ready for release, it can be merged/promoted to `main` individually so unfinished issues or PRs on `dev` are not pushed to production before they are ready.
 
-### Versioning rule (semver, minor-on-release)
+### Versioning rule (semver, beta pre-releases)
 
-- While working on `dev`, patch increments (`1.1.x`) are used for each
-  fix/feature PR — that's what the `Pre-release` workflow tags as
-  `v1.1.x-dev.<timestamp>` for HACS beta testers.
+- While working on `dev`, each merged PR triggers a beta tag `v<version>-beta.<N>` (e.g. `v1.8.0-beta.1`, `v1.8.0-beta.2`). Timestamps are **not** used.
 - **Before** opening the release PR, land a normal `chore/release-…` PR
   into `dev` that bumps `custom_components/petkit_ble/manifest.json` to
-  the next minor (patch reset to `0`):
-  - `1.1.8` → `1.2.0`
-  - `1.2.2` → `1.3.0`
-  - `1.5.7` → `1.6.0`
+  the target version:
+  - `1.8.0-beta.*` → `1.8.0` (or next minor `1.9.0`)
 
   The release workflow reads the version from `manifest.json`, so the
   bump must already be on `dev` HEAD when the release PR is merged into
