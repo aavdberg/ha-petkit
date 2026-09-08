@@ -43,3 +43,9 @@ jobs:
             --title "v${{ steps.version.outputs.version }}" \
             --generate-notes \
             --latest
+
+  version-dropdown:
+    needs: release
+    uses: ./.github/workflows/update-version-dropdown.yml
+    permissions:
+      contents: write
