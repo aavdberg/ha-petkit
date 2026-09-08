@@ -13,7 +13,7 @@ alias: "Petkit: Low Water Level Alert"
 description: "Notify when Petkit fountain runs low on water"
 trigger:
   - platform: state
-    entity_id: binary_sensor.fountain_water_missing
+    entity_id: binary_sensor.fountain_warning_water_missing
     to: "on"
 action:
   - action: notify.notify
@@ -34,13 +34,13 @@ alias: "Petkit: Replace Filter Reminder"
 description: "Notify when filter life drops below 10%"
 trigger:
   - platform: numeric_state
-    entity_id: sensor.fountain_filter_life
+    entity_id: sensor.fountain_filter_percent
     below: 10
 action:
   - action: notify.notify
     data:
       title: "🧹 Petkit Filter Alert"
-      message: "Filter life is at {{ states('sensor.fountain_filter_life') }}%. Remember to order a replacement filter!"
+      message: "Filter life is at {{ states('sensor.fountain_filter_percent') }}%. Remember to order a replacement filter!"
 mode: single
 ```
 
@@ -61,7 +61,7 @@ action:
   - action: notify.notify
     data:
       title: "🔋 Petkit Battery Low"
-      message: "The Petkit fountain battery is low ({{ states('sensor.fountain_battery') }}%). Please connect AC charger."
+      message: "The Petkit fountain battery is low ({{ states('sensor.fountain_battery_percent') }}%). Please connect AC charger."
 mode: single
 ```
 
@@ -80,8 +80,8 @@ trigger:
 action:
   - action: select.select_option
     target:
-      entity_id: select.fountain_operating_mode
+      entity_id: select.fountain_mode
     data:
-      option: "Smart"
+      option: "smart"
 mode: single
 ```

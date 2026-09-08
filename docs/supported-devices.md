@@ -36,5 +36,5 @@ The **ha-petkit** integration supports a wide range of Petkit smart water founta
 | **AC Power Sensor** | ✅ | ❌ | ❌ | ❌ |
 | **Low Battery Warning** | ✅ | ❌ | ❌ | ❌ |
 | **UVC Active Sensor** | ✅ | ❌ | ❌ | ❌ |
-| **DND Schedule (Time)** | ✅ | ✅ | ✅ | ✅ |
+| **DND Schedule (Time)** | ❌ | ✅ | ✅ | ✅ |
 | **LED Brightness Number** | ✅ (0-3) | ✅ (0-10) | ✅ (0-10) | ✅ (0-10) |
