@@ -29,6 +29,16 @@ Communicates directly over BLE — no cloud, no API token, no Petkit account req
 - **Switch**: power on/off
 - **ESPHome Bluetooth proxy support** — works transparently via Home Assistant's native Bluetooth stack
 
+## Documentation & Wiki
+
+For full documentation, entity reference, setup guides, and automation examples, see the [Documentation Suite](docs/README.md):
+
+- [Supported Devices & Hardware Variants](docs/supported-devices.md)
+- [Entity Reference & Calculation Formulas](docs/entities.md)
+- [Installation & ESPHome Proxy Setup](docs/setup.md)
+- [Troubleshooting & Debug Logging](docs/troubleshooting.md)
+- [Automation Examples](docs/automations.md)
+
 ## Requirements
 
 - Home Assistant 2024.1 or newer
