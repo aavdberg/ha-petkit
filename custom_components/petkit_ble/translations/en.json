@@ -67,6 +67,8 @@
       "power": {"name": "Power"},
       "energy_today_wh": {"name": "Energy Today (Wh)"},
       "filter_days_remaining": {"name": "Filter Days Remaining"},
+      "days_since_clean": {"name": "Days Since Cleaned"},
+      "last_cleaned": {"name": "Last Cleaned"},
       "firmware": {"name": "Firmware"},
       "hardware_version": {"name": "Hardware Version"},
       "rssi": {"name": "Signal Strength"},
@@ -86,7 +88,8 @@
       "uvc_active": {"name": "UVC Sterilization"}
     },
     "button": {
-      "reset_filter": {"name": "Reset Filter"}
+      "reset_filter": {"name": "Reset Filter"},
+      "reset_clean": {"name": "Reset Clean Counter"}
     },
     "number": {
       "smart_work_minutes": {"name": "Smart Mode Work Time"},

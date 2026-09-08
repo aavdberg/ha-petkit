@@ -16,6 +16,8 @@ This document details every entity provided by the **ha-petkit** integration, in
 | `energy_today` | Energy Today | `kWh` | All Models | Estimated electrical energy consumed today (calculated). |
 | `energy_today_wh` | Energy Today (Wh) | `Wh` | All Models | Estimated electrical energy consumed today in Watt-hours. |
 | `filter_days_remaining` | Filter Days Remaining | `d` | All Models | Estimated days before filter replacement is required. |
+| `days_since_clean` | Days Since Cleaned | `d` | All Models | Days elapsed since the water fountain was last cleaned. |
+| `last_cleaned` | Last Cleaned | timestamp | All Models | Timestamp when the fountain was last cleaned (diagnostic). |
 | `battery_percent` | Battery Level | `%` | CTW3 Only | Current battery state of charge. |
 | `battery_voltage_mv` | Battery Voltage | `mV` | CTW3 Only | Current battery terminal voltage in millivolts. |
 | `drink_count` | Drink Count | — | CTW3 Only | Number of drinking sessions recorded today. |
@@ -77,8 +79,9 @@ Where:
 - **`switch.<device>_do_not_disturb`**: Toggle Do Not Disturb mode ON or OFF (CMD 221).
 - **`switch.<device>_child_lock`**: Toggle button child lock ON or OFF (CMD 221).
 
-### Button
+### Buttons
 - **`button.<device>_reset_filter`**: Resets the internal filter life counter back to 100% (CMD 222).
+- **`button.<device>_reset_clean`**: Resets the last cleaned timestamp counter back to zero days.
 
 ### Select
 - **`select.<device>_mode`**: Choose between operating modes `normal` (continuous pumping) and `smart` (scheduled work/sleep intervals).
