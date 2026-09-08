@@ -280,9 +280,9 @@ When promoting changes from `dev` to `main` for a release:
 7. Verify `release.yml` published a non-prerelease `vX.Y.0` GitHub
    Release.
 8. **Immediately after releasing to `main`**: Bump `manifest.json` on `dev`
-   to the next minor version (e.g. `1.10.0`) via a `chore` PR on `dev`.
-   This ensures subsequent beta builds on `dev` (`v1.10.0-beta.1`) have a higher
-   version number than the stable release (`v1.9.0`) so HACS beta users receive updates.
+   to the next minor version (e.g. from `1.10.0` to `1.11.0`) via a `chore` PR on `dev`.
+   This ensures subsequent beta builds on `dev` (e.g. `v1.11.0-beta.1`) have a higher
+   version number than the stable release (e.g. `v1.10.0`) so HACS beta users receive updates.
    If any invalid post-release beta tags (matching the old version) were automatically
    created during the release PR merge, delete them using `gh release delete <tag> --yes --cleanup-tag`.
 
