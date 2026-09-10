@@ -744,12 +744,14 @@ class PetkitBleClient:
     ) -> bool:
         """Connect, authenticate, send a single command, disconnect.
 
-        Returns True on success.
+        Returns True only when a matching response is received.
         """
         try:
             await self._connect()
             await self._authenticate(alias, secret)
-            await self._send_and_wait(cmd, FRAME_TYPE_SEND, data)
+            response = await self._send_and_wait(cmd, FRAME_TYPE_SEND, data)
+            if response is None:
+                return False
         except Exception:
             _LOGGER.exception("Error sending CMD %d", cmd)
             return False
