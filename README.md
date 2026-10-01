@@ -20,7 +20,7 @@ Communicates directly over BLE — no cloud, no API token, no Petkit account req
 
 ## Features
 
-- **Sensors**: filter life %, pump runtime, water purified, energy today, filter days remaining, days since clean, last cleaned, battery (CTW3), RSSI
+- **Sensors**: filter life %, pump runtime, water purified today and total, energy today, filter days remaining, days since clean, last cleaned, battery (CTW3), RSSI
 - **Binary sensors**: pump running, water missing, filter warning, hardware failure, DND, pet detected (CTW3), AC power (CTW3), low battery (CTW3), UVC active (CTW3)
 - **Select**: operating mode (Normal / Smart)
 - **Number**: Smart mode work & sleep duration (minutes), LED brightness (max 3 on CTW3, 10 on others), battery work & sleep duration in seconds (CTW3)
@@ -220,5 +220,4 @@ ruff format --check custom_components/
 # Auto-fix issues
 ruff check --fix custom_components/
 ```
-
 

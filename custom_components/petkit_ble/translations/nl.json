@@ -63,6 +63,7 @@
       "battery_percent": {"name": "Batterij"},
       "battery_voltage_mv": {"name": "Batterijspanning"},
       "water_purified_today": {"name": "Gezuiverd water vandaag"},
+      "water_purified_total": {"name": "Totaal gezuiverd water"},
       "energy_today": {"name": "Energieverbruik vandaag"},
       "power": {"name": "Vermogen"},
       "energy_today_wh": {"name": "Energieverbruik vandaag (Wh)"},
@@ -73,7 +74,9 @@
       "hardware_version": {"name": "Hardwareversie"},
       "rssi": {"name": "Signaalsterkte"},
       "drink_count": {"name": "Drinkgebeurtenissen vandaag"},
-      "state_tail_hex": {"name": "CTW3 statestaart (hex)"}
+      "state_tail_hex": {"name": "CTW3 statestaart (hex)"},
+      "supply_voltage": {"name": "Voedingsspanning"},
+      "state_payload_len": {"name": "Lengte van statusframe"}
     },
     "binary_sensor": {
       "pump_running": {"name": "Pomp actief"},

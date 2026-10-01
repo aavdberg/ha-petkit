@@ -12,6 +12,7 @@ This document details every entity provided by the **ha-petkit** integration, in
 | `pump_runtime_today` | Pump Runtime Today | `s` | All Models | Accumulated seconds the pump has been active today. |
 | `pump_runtime` | Total Pump Runtime | `s` | All Models | Total lifetime seconds the pump has been active. |
 | `water_purified_today` | Water Purified Today | `L` | All Models | Estimated volume of water filtered today (calculated). |
+| `water_purified_total` | Water Purified Total | `L` | All Models | Estimated lifetime volume of water filtered (calculated). |
 | `power` | Power | `W` | All Models | Estimated current power consumption in Watts. |
 | `energy_today` | Energy Today | `kWh` | All Models | Estimated electrical energy consumed today (calculated). |
 | `energy_today_wh` | Energy Today (Wh) | `Wh` | All Models | Estimated electrical energy consumed today in Watt-hours. |
@@ -35,10 +36,13 @@ Where:
 - **Model Divisor**:
   - `CTW3`: 3.0
   - `W5C`: 1.0
-  - `W4X`: 1.8
-  - `W4XUVC` / `W5` / `W5N` / `CTW2`: 2.0
+  - `W4X` / `W4XUVC`: 1.8
+  - `W5` / `W5N` / `CTW2`: 2.0
 
-#### 2. Energy Consumed Today (kWh)
+#### 2. Total Water Purified (Liters)
+$$\text{Liters} = \frac{\text{Flow Rate (LPM)} \times \frac{\text{Total Pump Runtime (s)}}{60}}{\text{Model Divisor}}$$
+
+#### 3. Energy Consumed Today (kWh)
 $$\text{Energy (kWh)} = \frac{\text{Power (Watts)} \times \frac{\text{Pump Runtime Today (s)}}{3600}}{1000}$$
 
 Where:
@@ -46,7 +50,7 @@ Where:
   - `W5C`: 0.182 W
   - All other models: 0.75 W
 
-#### 3. Filter Days Remaining (Days)
+#### 4. Filter Days Remaining (Days)
 - **Normal Mode (Continuous)**:
   $$\text{Days} = \left\lceil \frac{\text{Filter Percent}}{100} \times 60 \right\rceil$$
 - **Smart Mode (Intermittent)**:

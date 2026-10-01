@@ -63,6 +63,7 @@
       "battery_percent": {"name": "Batterie"},
       "battery_voltage_mv": {"name": "Tension de la batterie"},
       "water_purified_today": {"name": "Eau purifiée aujourd'hui"},
+      "water_purified_total": {"name": "Eau purifiée au total"},
       "energy_today": {"name": "Énergie aujourd'hui"},
       "power": {"name": "Puissance"},
       "energy_today_wh": {"name": "Énergie aujourd'hui (Wh)"},
@@ -71,7 +72,9 @@
       "hardware_version": {"name": "Version matérielle"},
       "rssi": {"name": "Force du signal"},
       "drink_count": {"name": "Nombre de prises de boisson aujourd'hui"},
-      "state_tail_hex": {"name": "État final CTW3 (hex)"}
+      "state_tail_hex": {"name": "État final CTW3 (hex)"},
+      "supply_voltage": {"name": "Tension d'alimentation"},
+      "state_payload_len": {"name": "Longueur de trame d'état"}
     },
     "binary_sensor": {
       "pump_running": {"name": "Pompe en fonctionnement"},
