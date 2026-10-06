@@ -45,7 +45,7 @@ from .const import (
     KNOWN_ALIASES,
     POWER_COEFF_W,
 )
-from .protocol import build_init_payload, build_time_sync_payload, parse_device_id
+from .protocol import auth_accepted, build_init_payload, build_time_sync_payload, require_device_id
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -618,10 +618,28 @@ class PetkitBleClient:
         try:
             await self._connect()
             payload = await self._send_and_wait(CMD_GET_DEVICE_INFO, FRAME_TYPE_SEND, [])
-            if payload is None or len(payload) < 8:
-                return False, 0
-            device_id = parse_device_id(payload)
+            # Raises DeviceReplyMissing on a timeout: an unread device is NOT an
+            # uninitialised one, and the caller writes CMD 73 to the latter.
+            device_id = require_device_id(payload)
             return device_id != 0, device_id
+        finally:
+            await self.disconnect()
+
+    async def async_verify_secret(self, secret: bytes) -> bool:
+        """Connect and authenticate with an existing secret. Never writes to the device.
+
+        Adopts a fountain that is already bound (typically by the Petkit app) by
+        reusing its secret instead of re-pairing with CMD 73 -- which some firmware
+        ACKs with 0x01 and then silently discards. Returns True only when CMD 86
+        accepts the secret; connection errors propagate to the caller.
+        """
+        try:
+            await self._connect()
+            # CMD 213 first: the firmware disconnects on commands sent before it.
+            require_device_id(await self._send_and_wait(CMD_GET_DEVICE_INFO, FRAME_TYPE_SEND, []))
+            await asyncio.sleep(AUTH_STEP_DELAY)
+            # Raises DeviceReplyMissing on a timeout -- never reported as "rejected".
+            return auth_accepted(await self._send_and_wait(CMD_AUTH_VERIFY, FRAME_TYPE_SEND, list(secret[:8])))
         finally:
             await self.disconnect()
 

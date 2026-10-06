@@ -33,6 +33,7 @@ from .const import (
     DOMAIN,
     PETKIT_NAME_PREFIXES,
 )
+from .protocol import normalize_device_secret
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -196,10 +197,17 @@ class PetkitBleConfigFlow(ConfigFlow, domain=DOMAIN):
         except BleakCharacteristicNotFoundError as err:
             _LOGGER.warning("Device %s does not have required BLE characteristics: %s", name, err)
             return self.async_abort(reason="unsupported_device")
-        except Exception:
-            _LOGGER.exception("Failed to check device init status for %s", name)
-            # Cannot check — create entry without secret
-            return self.async_create_entry(title=name, data=self._pending_data)
+        except Exception as err:
+            # Unknown is not "uninitialised". Proceeding would write CMD 73 to a
+            # device that may be bound -- which wipes the binding on some firmware
+            # -- and the old fallback created an entry with no secret that could
+            # never authenticate. Ask for a retry instead; nothing is written.
+            _LOGGER.warning("Could not read %s's binding state (%s); nothing written", name, err)
+            return self.async_show_form(
+                step_id="init_device",
+                description_placeholders={"name": name},
+                errors={"base": "cannot_connect"},
+            )
 
         if initialized:
             # Device already bound (typically by the Petkit app). The firmware
@@ -222,8 +230,47 @@ class PetkitBleConfigFlow(ConfigFlow, domain=DOMAIN):
         """Let the user re-pair an already-bound device or cancel."""
         return self.async_show_menu(
             step_id="confirm_repair",
-            menu_options=["repair_confirm", "repair_cancel"],
+            menu_options=["enter_secret", "repair_confirm", "repair_cancel"],
             description_placeholders={"name": self._pending_data[CONF_NAME]},
+        )
+
+    async def async_step_enter_secret(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Adopt an already-paired device by reusing its existing secret.
+
+        Nothing is written to the device, so the Petkit app keeps working with the
+        same secret. On firmware that ACKs CMD 73 but discards it, this is the only
+        way in -- re-pairing cannot succeed there.
+        """
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            try:
+                secret = normalize_device_secret(user_input[CONF_DEVICE_SECRET])
+            except ValueError:
+                errors["base"] = "invalid_secret_format"
+            else:
+                address = self._pending_data[CONF_ADDRESS]
+                ble_device = async_ble_device_from_address(self.hass, address, connectable=True)
+                if ble_device is None:
+                    errors["base"] = "cannot_connect"
+                else:
+                    try:
+                        accepted = await PetkitBleClient(ble_device).async_verify_secret(secret)
+                    except Exception:
+                        _LOGGER.exception("Could not verify the secret for %s", address)
+                        errors["base"] = "cannot_connect"
+                    else:
+                        if accepted:
+                            return self.async_create_entry(
+                                title=self._pending_data[CONF_NAME],
+                                data={**self._pending_data, CONF_DEVICE_SECRET: secret.hex()},
+                            )
+                        errors["base"] = "invalid_secret"
+
+        return self.async_show_form(
+            step_id="enter_secret",
+            data_schema=vol.Schema({vol.Required(CONF_DEVICE_SECRET): str}),
+            description_placeholders={"name": self._pending_data[CONF_NAME]},
+            errors=errors,
         )
 
     async def async_step_repair_confirm(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
