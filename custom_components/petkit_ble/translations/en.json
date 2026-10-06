@@ -22,7 +22,15 @@
         "description": "**{name}** is already paired — most likely with the PetKit app, or with a previous Home Assistant setup whose secret was lost. To control it from Home Assistant you must re-pair it with a new secret. This **overwrites the existing pairing**: the PetKit app won't connect until you factory reset the fountain, and the two can't control it at the same time.",
         "menu_options": {
           "repair_confirm": "Re-pair now (replaces the existing pairing)",
-          "repair_cancel": "Cancel — leave the device untouched"
+          "repair_cancel": "Cancel — leave the device untouched",
+          "enter_secret": "Use the device's existing secret (keeps the PetKit app working)"
+        }
+      },
+      "enter_secret": {
+        "title": "Use the Existing Secret",
+        "description": "Enter **{name}**'s secret as PetKit reports it — 12 hexadecimal characters (16 are accepted too). It is PetKit's own per-device secret, returned by PetKit's cloud API or shown as `secret:` in the PetKit app's logs. Nothing is written to the fountain, so the PetKit app keeps working alongside Home Assistant.",
+        "data": {
+          "device_secret": "Device secret"
         }
       }
     },
@@ -31,7 +39,9 @@
       "cannot_connect": "Could not connect to the device. Make sure it is powered on and in range.",
       "unknown": "An unexpected error occurred.",
       "device_already_initialized": "Device is already initialized. Please factory reset it first (detach control module, hold power button 3 seconds until LEDs flash).",
-      "init_failed": "Failed to initialize the device. Please try again."
+      "init_failed": "Failed to initialize the device. Please try again.",
+      "invalid_secret": "The fountain rejected that secret. Check it is this device's secret and try again.",
+      "invalid_secret_format": "Enter the secret as 12 (or 16) hexadecimal characters."
     },
     "abort": {
       "already_configured": "This device is already configured.",

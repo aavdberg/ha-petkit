@@ -5,6 +5,8 @@ from __future__ import annotations
 import struct
 from unittest.mock import patch
 
+import pytest
+
 from custom_components.petkit_ble.const import (
     FRAME_END,
     FRAME_HEADER,
@@ -18,6 +20,7 @@ from custom_components.petkit_ble.protocol import (
     build_settings_payload_ctw3,
     build_settings_payload_generic,
     build_time_sync_payload,
+    normalize_device_secret,
     parse_device_id,
 )
 
@@ -375,3 +378,42 @@ class TestFrameFormat:
         client = PetkitBleClient(MagicMock())
         frame = bytes([0x00, 0x00, 0x00, 210, 1, 0, 0, 0, FRAME_END])
         assert client._parse_frame(frame) is None
+
+
+class TestNormalizeDeviceSecret:
+    """Guard: a Petkit-issued 6-byte secret must be LEFT-padded to 8 bytes.
+
+    Petkit's servers issue a 6-byte secret (12 hex chars). This repo's own
+    secrets are a full 8 bytes and get right-padded by build_init_payload, so
+    reusing that convention for a Petkit-issued secret produces a payload the
+    device rejects.
+    """
+
+    def test_six_byte_secret_is_left_padded(self) -> None:
+        assert normalize_device_secret("1a2b3c4d5e6f") == bytes.fromhex("00001a2b3c4d5e6f")
+
+    def test_right_padding_is_a_different_payload(self) -> None:
+        """Positive control: right-padding (this repo's own convention) differs."""
+        right = (bytes.fromhex("1a2b3c4d5e6f") + b"\x00" * 8)[:8]
+        assert right == bytes.fromhex("1a2b3c4d5e6f0000"), "control: right-pad layout"
+        assert normalize_device_secret("1a2b3c4d5e6f") != right
+
+    def test_full_eight_byte_secret_is_unchanged(self) -> None:
+        assert normalize_device_secret("0011223344556677") == bytes.fromhex("0011223344556677")
+
+    def test_separators_and_case_are_ignored(self) -> None:
+        assert normalize_device_secret(" 1A:2B-3C 4D:5E:6F ") == bytes.fromhex("00001a2b3c4d5e6f")
+
+    def test_result_is_always_eight_bytes(self) -> None:
+        for value in ("1a2b3c4d5e6f", "0011223344556677"):
+            assert len(normalize_device_secret(value)) == 8
+
+    @pytest.mark.parametrize("bad", ["", "1a2b3c", "1a2b3c4d5e6f7", "zz2b3c4d5e6f", "1a2b3c4d5e6f778899", None])
+    def test_rejects_wrong_length_or_non_hex(self, bad: str | None) -> None:
+        with pytest.raises(ValueError):
+            normalize_device_secret(bad)  # type: ignore[arg-type]
+
+    def test_stored_hex_round_trips_through_the_coordinator(self) -> None:
+        """The flow stores secret.hex(); the coordinator does bytes.fromhex(stored)."""
+        secret = normalize_device_secret("1a2b3c4d5e6f")
+        assert bytes.fromhex(secret.hex()) == secret

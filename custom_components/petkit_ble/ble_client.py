@@ -625,6 +625,23 @@ class PetkitBleClient:
         finally:
             await self.disconnect()
 
+    async def async_verify_secret(self, secret: bytes) -> bool:
+        """Connect and authenticate with an existing secret. Never writes to the device.
+
+        Adopts a fountain that is already bound (typically by the Petkit app) by
+        reusing its secret instead of re-pairing with CMD 73 -- which some firmware
+        ACKs with 0x01 and then silently discards. Returns True only when CMD 86
+        accepts the secret; connection errors propagate to the caller.
+        """
+        try:
+            await self._connect()
+            await self._authenticate("verify", secret)
+            return True
+        except RuntimeError:
+            return False
+        finally:
+            await self.disconnect()
+
     async def async_init_device(self, device_id: int, secret: bytes) -> bool:
         """Connect, initialize device with CMD 73, verify with CMD 86, disconnect.
 

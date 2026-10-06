@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import struct
 import time
 from typing import TYPE_CHECKING
@@ -39,6 +40,26 @@ def parse_device_id(payload: bytes) -> int:
     if len(payload) < 8:
         return 0
     return int.from_bytes(payload[:8], "big")
+
+
+def normalize_device_secret(value: str) -> bytes:
+    """Turn a secret as Petkit reports it into the 8 bytes CMD 86 expects.
+
+    Petkit's servers issue each fountain a 6-byte secret, shown as 12 hex
+    characters (the cloud API's ``secret`` field, or ``secret:...`` in the
+    Android app's logs). On the wire it is **left**-padded with zero bytes to 8.
+    That differs from the secrets this integration generates itself, which are
+    a full 8 bytes -- right-padding a 6-byte secret yields a different payload
+    that the device rejects.
+
+    Accepts 12 or 16 hex characters, ignoring whitespace, ``:`` and ``-``.
+    Raises ``ValueError`` for anything else.
+    """
+    cleaned = re.sub(r"[\s:\-]", "", value or "")
+    if not re.fullmatch(r"[0-9a-fA-F]{12}|[0-9a-fA-F]{16}", cleaned):
+        raise ValueError("expected 12 or 16 hexadecimal characters")
+    raw = bytes.fromhex(cleaned)
+    return bytes(8 - len(raw)) + raw
 
 
 def build_init_payload(device_id: int, secret: bytes) -> list[int]:
