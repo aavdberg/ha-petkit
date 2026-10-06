@@ -42,6 +42,36 @@ def parse_device_id(payload: bytes) -> int:
     return int.from_bytes(payload[:8], "big")
 
 
+class DeviceReplyMissing(ValueError):
+    """The device gave no usable reply, so its state is UNKNOWN -- not "no"."""
+
+
+def require_device_id(payload: bytes | None) -> int:
+    """Read the device id from a CMD 213 reply, refusing to guess.
+
+    ``parse_device_id`` returns 0 -- the "uninitialised" sentinel -- for a short
+    payload. Fed into a decision, that turns a timeout into "this device is
+    unbound", and the config flow answers that by writing CMD 73, which on some
+    firmware wipes an existing binding (observed on a W4XUVC: bound before, a
+    CMD 213 timeout, CMD 73, unbound after). A missing or short reply raises.
+    """
+    if payload is None or len(payload) < 8:
+        size = 0 if payload is None else len(payload)
+        raise DeviceReplyMissing(f"CMD 213 reply missing or too short ({size} bytes)")
+    return int.from_bytes(payload[:8], "big")
+
+
+def auth_accepted(payload: bytes | None) -> bool:
+    """Interpret a CMD 86 reply: True accepted, False rejected; raises if absent.
+
+    A timeout is not a rejection. Reporting it as one would tell the user their
+    secret is wrong when the radio link simply dropped the reply.
+    """
+    if not payload:
+        raise DeviceReplyMissing("no reply to CMD 86")
+    return payload[0] == 1
+
+
 def normalize_device_secret(value: str) -> bytes:
     """Turn a secret as Petkit reports it into the 8 bytes CMD 86 expects.
 

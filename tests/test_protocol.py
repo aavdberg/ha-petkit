@@ -13,6 +13,8 @@ from custom_components.petkit_ble.const import (
     PETKIT_EPOCH_OFFSET,
 )
 from custom_components.petkit_ble.protocol import (
+    DeviceReplyMissing,
+    auth_accepted,
     build_change_mode_payload,
     build_ctw3_mode_payload,
     build_ctw3_select_mode_payload,
@@ -22,6 +24,7 @@ from custom_components.petkit_ble.protocol import (
     build_time_sync_payload,
     normalize_device_secret,
     parse_device_id,
+    require_device_id,
 )
 
 
@@ -417,3 +420,43 @@ class TestNormalizeDeviceSecret:
         """The flow stores secret.hex(); the coordinator does bytes.fromhex(stored)."""
         secret = normalize_device_secret("1a2b3c4d5e6f")
         assert bytes.fromhex(secret.hex()) == secret
+
+
+class TestNoReplyIsNotAnAnswer:
+    """Guard: a missing reply must never be read as a definitive answer.
+
+    Observed on a W4XUVC: the fountain was bound, a CMD 213 timed out, the flow
+    took that as "unbound" and wrote CMD 73, and the binding was gone. Each test
+    below pairs the old conflating behaviour (positive control) with the new.
+    """
+
+    def test_control_parse_device_id_conflates_no_reply_with_unbound(self) -> None:
+        """Positive control: the old reader returns the 'unbound' sentinel."""
+        assert parse_device_id(b"") == 0
+        assert parse_device_id(b"\x00\x01") == 0
+
+    @pytest.mark.parametrize("payload", [None, b"", b"\x00\x01\x02"])
+    def test_require_device_id_raises_on_missing_or_short_reply(self, payload: bytes | None) -> None:
+        with pytest.raises(DeviceReplyMissing):
+            require_device_id(payload)
+
+    def test_require_device_id_still_reports_a_real_zero(self) -> None:
+        """A genuine 8-byte zero id is an answer: the device IS unbound."""
+        assert require_device_id(bytes(8) + b"20260307W40704") == 0
+
+    def test_require_device_id_reads_a_bound_id(self) -> None:
+        payload = bytes.fromhex("0000000017d8d64c") + b"20260307W40704"
+        assert require_device_id(payload) == 400086604
+
+    @pytest.mark.parametrize("payload", [None, b""])
+    def test_auth_accepted_raises_on_no_reply(self, payload: bytes | None) -> None:
+        with pytest.raises(DeviceReplyMissing):
+            auth_accepted(payload)
+
+    def test_auth_accepted_reads_accept_and_reject(self) -> None:
+        assert auth_accepted(b"\x01") is True
+        assert auth_accepted(b"\x00") is False
+
+    def test_missing_reply_is_a_value_error(self) -> None:
+        """Callers catching ValueError (or Exception) still see it."""
+        assert issubclass(DeviceReplyMissing, ValueError)

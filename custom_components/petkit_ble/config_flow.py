@@ -197,10 +197,17 @@ class PetkitBleConfigFlow(ConfigFlow, domain=DOMAIN):
         except BleakCharacteristicNotFoundError as err:
             _LOGGER.warning("Device %s does not have required BLE characteristics: %s", name, err)
             return self.async_abort(reason="unsupported_device")
-        except Exception:
-            _LOGGER.exception("Failed to check device init status for %s", name)
-            # Cannot check — create entry without secret
-            return self.async_create_entry(title=name, data=self._pending_data)
+        except Exception as err:
+            # Unknown is not "uninitialised". Proceeding would write CMD 73 to a
+            # device that may be bound -- which wipes the binding on some firmware
+            # -- and the old fallback created an entry with no secret that could
+            # never authenticate. Ask for a retry instead; nothing is written.
+            _LOGGER.warning("Could not read %s's binding state (%s); nothing written", name, err)
+            return self.async_show_form(
+                step_id="init_device",
+                description_placeholders={"name": name},
+                errors={"base": "cannot_connect"},
+            )
 
         if initialized:
             # Device already bound (typically by the Petkit app). The firmware
