@@ -14,9 +14,9 @@ This guide helps resolve common issues with the **ha-petkit** integration and ex
   - Verify the fountain is plugged in and turned on.
 
 ### 2. Controls (e.g. Mode / Power Switch) are ignored by device
-- **Cause**: Authentication challenge (CMD 73 / CMD 86) failed or session timed out.
+- **Cause**: Authentication verification (CMD 86) failed or the session timed out.
 - **Solution**:
-  - The integration runs a full authentication sequence (CMD 213 → CMD 73 → CMD 86 → CMD 84) on every connection. If another client (such as the official Petkit smartphone app) connects to the fountain over BLE at the same time, it can disconnect or reset the fountain's auth session.
+  - On a normal connection, the integration reads device info (CMD 213), verifies the stored secret (CMD 86), and syncs the time (CMD 84). CMD 73 registers a secret only during initial setup or re-pairing. If another client (such as the official Petkit smartphone app) connects to the fountain over BLE at the same time, it can disconnect or reset the fountain's auth session.
   - Ensure the official Petkit smartphone app is closed or Bluetooth on your phone is toggled off while Home Assistant is managing the device.
 
 ### 3. Filter percentage is incorrect after changing filter

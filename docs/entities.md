@@ -28,10 +28,10 @@ This document details every entity provided by the **ha-petkit** integration, in
 ### Derived Calculation Formulas
 
 #### 1. Water Purified Today (Liters)
-$$\text{Liters} = \frac{\text{Flow Rate (1.5 LPM)} \times \frac{\text{Pump Runtime Today (s)}}{3600}}{\text{Model Divisor}}$$
+$$\text{Liters} = \frac{\text{Flow Rate (L/min)} \times \frac{\text{Pump Runtime Today (s)}}{60}}{\text{Model Divisor}}$$
 
 Where:
-- **Flow Rate**: 1.5 LPM
+- **Flow Rate**: 1.3 LPM for `W5C`; 1.5 LPM for all other models
 - **Model Divisor**:
   - `CTW3`: 3.0
   - `W5C`: 1.0
@@ -82,6 +82,7 @@ Where:
 ### Buttons
 - **`button.<device>_reset_filter`**: Resets the internal filter life counter back to 100% (CMD 222).
 - **`button.<device>_reset_clean`**: Resets the last cleaned timestamp counter back to zero days.
+- **`button.<device>_initialize_ctw3_settings`** (CTW3 only): Sets both detection flags to OFF and writes all settings using the current values or integration defaults. Use only when the detection flags are unknown: CMD 221 writes the full settings payload, and firmware 111 may not return the existing settings through CMD 211, so unread device settings can be replaced by defaults.
 
 ### Select
 - **`select.<device>_mode`**: Choose between operating modes `normal` (continuous pumping) and `smart` (scheduled work/sleep intervals).

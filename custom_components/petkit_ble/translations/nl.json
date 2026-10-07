@@ -89,7 +89,8 @@
     },
     "button": {
       "reset_filter": {"name": "Filter resetten"},
-      "reset_clean": {"name": "Schoonmaakteller resetten"}
+      "reset_clean": {"name": "Schoonmaakteller resetten"},
+      "initialize_ctw3_settings": {"name": "CTW3-instellingen initialiseren"}
     },
     "number": {
       "smart_work_minutes": {"name": "Smart-modus werktijd"},

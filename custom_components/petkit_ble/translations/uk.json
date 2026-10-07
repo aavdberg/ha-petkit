@@ -89,7 +89,8 @@
     },
     "button": {
       "reset_filter": {"name": "Скинути фільтр"},
-      "reset_clean": {"name": "Скинути лічильник очищення"}
+      "reset_clean": {"name": "Скинути лічильник очищення"},
+      "initialize_ctw3_settings": {"name": "Ініціалізувати налаштування CTW3"}
     },
     "number": {
       "smart_work_minutes": {"name": "Час роботи смарт-режиму"},

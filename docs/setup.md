@@ -54,6 +54,8 @@ Petkit fountains communicate using low-power BLE. If your Home Assistant server 
 ### Setting up an ESPHome BLE Proxy
 Using an inexpensive ESP32 board (e.g. ESP32-WROOM / ESP32-C3) near your fountain eliminates distance issues:
 
+The YAML below is only the BLE-proxy portion to merge into an already configured ESPHome device. It omits the network and API configuration required for a standalone proxy; follow the [ESPHome Bluetooth Proxy guide](https://esphome.io/components/bluetooth_proxy.html) when setting up a new device.
+
 ```yaml
 esphome:
   name: ble-proxy-livingroom

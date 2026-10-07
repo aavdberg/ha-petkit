@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
@@ -50,6 +51,14 @@ for mod_name in _HA_STUBS:
         mod = MagicMock()
         mod.__path__ = []
         sys.modules[mod_name] = mod
+
+
+def _ha_callback(func: Callable[..., Any]) -> Callable[..., Any]:
+    """Match Home Assistant's callback decorator in plain pytest runs."""
+    return func
+
+
+sys.modules["homeassistant.core"].callback = _ha_callback
 
 
 class StubEntity:

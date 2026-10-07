@@ -76,7 +76,8 @@
       },
       "button": {
         "reset_filter": {"name": "Reset Filter"},
-        "reset_clean": {"name": "Reset Clean Counter"}
+        "reset_clean": {"name": "Reset Clean Counter"},
+        "initialize_ctw3_settings": {"name": "Initialize CTW3 Settings"}
       },
       "number": {
         "smart_work_minutes": {"name": "Smart Mode Work Time"},
