@@ -30,4 +30,4 @@ The integration communicates directly with Petkit fountains over BLE without req
 ### Key Technical Characteristics
 - **Local Control**: Direct GATT read/write operations over BLE (`0000aaa1` notify / `0000aaa2` write).
 - **ESPHome Proxy Transparent Support**: Uses Home Assistant's `async_ble_device_from_address()` to work seamlessly over ESPHome Bluetooth proxies across your home.
-- **Session Re-Authentication**: Implements per-connection authentication (CMD 213 → CMD 73 secret challenge → CMD 86 verification → CMD 84 time sync) to guarantee reliable state polling.
+- **Session Re-Authentication**: Each normal connection reads device info (CMD 213), verifies the stored secret (CMD 86), and syncs the time (CMD 84). CMD 73 registers a secret only during initial setup or re-pairing.

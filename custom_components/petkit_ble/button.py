@@ -43,6 +43,12 @@ BUTTON_DESCRIPTIONS: tuple[PetkitButtonDescription, ...] = (
     ),
 )
 
+INITIALIZE_CTW3_SETTINGS_BUTTON = PetkitButtonDescription(
+    key="initialize_ctw3_settings",
+    translation_key="initialize_ctw3_settings",
+    async_press_fn=lambda coordinator: coordinator.async_initialize_ctw3_settings(),
+)
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -51,7 +57,10 @@ async def async_setup_entry(
 ) -> None:
     """Set up Petkit BLE buttons from a config entry."""
     coordinator: PetkitBleCoordinator = config_entry.runtime_data
-    async_add_entities(PetkitBleButton(coordinator, description) for description in BUTTON_DESCRIPTIONS)
+    descriptions = list(BUTTON_DESCRIPTIONS)
+    if coordinator.data is not None and coordinator.data.is_ctw3:
+        descriptions.append(INITIALIZE_CTW3_SETTINGS_BUTTON)
+    async_add_entities(PetkitBleButton(coordinator, description) for description in descriptions)
 
 
 class PetkitBleButton(PetkitBleEntity, ButtonEntity):
@@ -67,6 +76,20 @@ class PetkitBleButton(PetkitBleEntity, ButtonEntity):
         """Initialise the button."""
         super().__init__(coordinator, description.key, ENTITY_ID_FORMAT)
         self.entity_description = description
+
+    @property
+    def available(self) -> bool:
+        """Expose initialization only while either CTW3 detection flag is unknown."""
+        if not super().available:
+            return False
+        if self.entity_description.key != "initialize_ctw3_settings":
+            return True
+        data = self.coordinator.data
+        return (
+            data is not None
+            and data.is_ctw3
+            and (data.smart_inductive_switch is None or data.battery_inductive_switch is None)
+        )
 
     async def async_press(self) -> None:
         """Send the button command or execute action."""

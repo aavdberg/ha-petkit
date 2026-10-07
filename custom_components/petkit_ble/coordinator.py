@@ -30,6 +30,7 @@ if TYPE_CHECKING:
 
 from .ble_client import PetkitBleClient, PetkitFountainData
 from .const import (
+    CMD_WRITE_SETTINGS,
     CONF_ADDRESS,
     CONF_DEVICE_SECRET,
     CONF_MODEL,
@@ -40,6 +41,7 @@ from .const import (
     MODE_SMART,
     POLL_INTERVAL,
 )
+from .protocol import build_full_settings_payload
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -446,6 +448,35 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
         if self.data is not None:
             _apply_clean_state_into(self._clean_state, self.data)
             self.async_set_updated_data(self.data)
+
+    async def async_initialize_ctw3_settings(self) -> None:
+        """Initialize unread CTW3 settings with detection disabled."""
+        data = self.data
+        if data is None or not data.is_ctw3:
+            return
+        if data.smart_inductive_switch is not None and data.battery_inductive_switch is not None:
+            return
+
+        detection_settings = {
+            "smart_inductive_switch": 0,
+            "battery_inductive_switch": 0,
+        }
+        payload = build_full_settings_payload(data, **detection_settings)
+        if payload is None:
+            _LOGGER.error("Cannot initialize CTW3 settings because the settings payload is incomplete")
+            return
+        if not await self.async_send_command(CMD_WRITE_SETTINGS, payload):
+            _LOGGER.error("Failed to initialize CTW3 settings for %s", self._name)
+            return
+
+        for field in _SETTINGS_FIELDS:
+            value = detection_settings.get(field, getattr(data, field))
+            if value is not None:
+                self._settings_cache[field] = value
+                setattr(data, field, value)
+        data.config_loaded = True
+        self.async_set_updated_data(data)
+        await self.async_request_refresh()
 
     async def _track_drink_event(self, data: PetkitFountainData) -> None:
         """Thin wrapper around ``_track_drink_event_into`` for the poll loop."""

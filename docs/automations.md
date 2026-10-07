@@ -67,13 +67,13 @@ mode: single
 
 ---
 
-## 4. Automatic DND (Do Not Disturb) Night Mode
+## 4. Schedule Smart Mode at Night
 
-Automatically switches operating mode to Smart and enables DND during sleeping hours.
+This example switches the fountain to Smart mode at 23:00. It does not enable the separate DND setting or restore the previous mode in the morning.
 
 ```yaml
 alias: "Petkit: Night Mode"
-description: "Set Smart mode and quiet pump at night"
+description: "Switch to Smart mode at 23:00; this does not configure DND or restore the previous mode."
 trigger:
   - platform: time
     at: "23:00:00"
