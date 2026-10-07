@@ -114,7 +114,9 @@
       "power": {"name": "Alimentation"},
       "led": {"name": "LED"},
       "do_not_disturb": {"name": "Ne pas déranger"},
-      "child_lock": {"name": "Verrouillage enfant"}
+      "child_lock": {"name": "Verrouillage enfant"},
+      "smart_inductive_switch": {"name": "Détection en mode intelligent"},
+      "battery_inductive_switch": {"name": "Détection en mode batterie"}
     }
   }
 }

@@ -117,7 +117,9 @@
       "power": {"name": "Aan/Uit"},
       "led": {"name": "LED"},
       "do_not_disturb": {"name": "Niet storen"},
-      "child_lock": {"name": "Kinderslot"}
+      "child_lock": {"name": "Kinderslot"},
+      "smart_inductive_switch": {"name": "Detectie in smartmodus"},
+      "battery_inductive_switch": {"name": "Detectie op batterij"}
     }
   }
 }

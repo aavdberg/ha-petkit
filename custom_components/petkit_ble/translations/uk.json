@@ -117,7 +117,9 @@
       "power": {"name": "Живлення"},
       "led": {"name": "LED"},
       "do_not_disturb": {"name": "Не турбувати"},
-      "child_lock": {"name": "Дитячий замок"}
+      "child_lock": {"name": "Дитячий замок"},
+      "smart_inductive_switch": {"name": "Виявлення у смарт-режимі"},
+      "battery_inductive_switch": {"name": "Виявлення в режимі роботи від батареї"}
     }
   }
 }
