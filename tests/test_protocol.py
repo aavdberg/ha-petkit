@@ -368,9 +368,9 @@ class TestBuildCtw3SelectModePayload:
         """Selecting Normal => [1, 1, 1] (power on, pump active)."""
         assert build_ctw3_select_mode_payload(1) == [1, 1, 1]
 
-    def test_select_smart_always_sends_power_on_without_suspend(self) -> None:
-        """Selecting Smart => [1, 0, 2] (power on, timer-managed)."""
-        assert build_ctw3_select_mode_payload(2) == [1, 0, 2]
+    def test_select_smart_keeps_pump_running(self) -> None:
+        """Selecting Smart => [1, 1, 2]; suspend=0 would leave the fountain suspended."""
+        assert build_ctw3_select_mode_payload(2) == [1, 1, 2]
 
 
 class TestFrameFormat:
