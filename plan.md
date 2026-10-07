@@ -1,18 +1,20 @@
-# UV-C Sterilisation Implementation Plan
+# UV-C Protocol Findings from PETKIT APK 13.10.1
 
-## Findings
+## Verified findings
 
-- `PetkitFountainData.has_uvc` identifies CTW3 and W4XUVC devices.
-- CTW3 CMD 210 parsing exposes `module_status`; the existing `uvc_active` binary sensor reads bit 0 but is currently supported only on CTW3.
-- W4XUVC status decoding and the BLE command/payload for UV-C control are not confirmed in the repository or tests.
+- The APK's `CTW3DataConvertor` parses CMD 210 payload byte 25 into `moduleStatus`. The inspected client code does not interpret the field's bits as UV-C state.
+- CTW3 CMD 221 writers serialize a 12-byte settings payload containing smart/battery schedules, LED settings, DND, child lock, and detection flags. No UV-C field or dedicated UV-C BLE command was found in the inspected converter.
+- The APK identifies W4XUVC as W5 type code 6. Its `W5DataConvertor` uses the generic CMD 210 state layout and contains no W4XUVC-specific UV-C status or control handling.
+- The integration's existing CTW3 `uvc_active` sensor interprets `module_status & 0x01` as active. This APK confirms the byte offset but does not confirm that bit's meaning.
+- The APK includes W4XUVC and sterilization UI/model strings, but those names alone do not establish a BLE status mapping or control payload.
 
-## Proposed scope
+## Safe implementation scope
 
-1. Confirm UV-C status byte/bit mapping and the control command/payload for both supported device variants from verified APK or device evidence.
-2. Use the confirmed protocol in the state model and command path; expose UVC status and control entities only on devices for which each behavior is confirmed.
-3. Add focused protocol/entity tests and matching translations for all supported languages.
-4. Run the targeted tests, Ruff checks, secret scanning, and required parallel validation.
+- Keep the existing integration behavior unchanged; do not enable `uvc_active` for W4XUVC or add UV-C write entities based on unverified protocol assumptions.
+- Document the APK evidence and the remaining protocol gaps. A BLE capture or another authoritative protocol source is required before adding or changing UV-C status/control behavior.
+- Keep this change related to, but do not auto-close, tracking issue #148, which still covers unrelated unfinished work.
 
-## Approval gate
+## Validation
 
-Do not implement or send UV-C write commands based on guessed protocol details. Proceed after the plan is approved and the missing protocol mappings are supplied or otherwise verified.
+- Static inspection of the user-provided APK was performed locally. The APK and decompiled output are not part of this repository.
+- This is a documentation-only change; no integration tests or runtime behavior are changed.
