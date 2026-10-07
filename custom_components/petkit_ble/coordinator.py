@@ -67,6 +67,18 @@ _SETTINGS_FIELDS: tuple[str, ...] = (
     "dnd_start_minutes",
     "dnd_end_minutes",
 )
+_SETTINGS_BYTE_FIELDS = frozenset(
+    {
+        "smart_time_on",
+        "smart_time_off",
+        "led_switch",
+        "led_brightness",
+        "do_not_disturb_switch",
+        "is_locked",
+        "smart_inductive_switch",
+        "battery_inductive_switch",
+    }
+)
 
 # How long to wait for a connectable advertisement before giving up. The proxy
 # emits adverts every ~500ms, but it can be unavailable for a few seconds while
@@ -129,7 +141,8 @@ async def _load_settings_cache_into(cache: dict[str, int], store: Any) -> None:
         return
     for field in _SETTINGS_FIELDS:
         value = stored.get(field)
-        if isinstance(value, int) and not isinstance(value, bool):
+        maximum = 0xFF if field in _SETTINGS_BYTE_FIELDS else 0xFFFF
+        if isinstance(value, int) and not isinstance(value, bool) and 0 <= value <= maximum:
             cache[field] = value
         elif value is not None:
             _LOGGER.debug("Discarding invalid stored setting %s=%r", field, value)
@@ -449,11 +462,11 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
         )
 
     async def async_load_persistent_state(self) -> None:
-        """Load the persisted drink-event counter, mode, and last-cleaned timestamp from disk.
+        """Load persisted drink, mode, cleaning, and confirmed setting state.
 
         Called once before the first refresh so a Home Assistant restart or
         integration reload no longer wipes today's count to zero, loses the
-        last known operation mode, or resets the last-cleaned timestamp.
+        last known operation mode or settings, or resets the last-cleaned timestamp.
         """
         await _load_drink_state_into(self._drink_state, self._drink_store)
         self._mode_cache = await _load_mode_state_into(self._mode_store)

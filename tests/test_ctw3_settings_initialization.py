@@ -130,3 +130,19 @@ async def test_initialized_settings_and_later_changes_survive_reload() -> None:
     assert fresh_data.smart_inductive_switch == 0
     assert fresh_data.battery_inductive_switch == 0
     assert fresh_data.config_loaded is True
+
+
+@pytest.mark.asyncio
+async def test_corrupt_persisted_settings_are_discarded() -> None:
+    store = _MemorySettingsStore()
+    store.snapshot = {
+        "smart_inductive_switch": True,
+        "battery_inductive_switch": 1,
+        "smart_time_on": -1,
+        "led_switch": 256,
+    }
+    cache: dict[str, int] = {}
+
+    await _load_settings_cache_into(cache, store)
+
+    assert cache == {"battery_inductive_switch": 1}
