@@ -88,6 +88,7 @@ CMD 73 uses the device_id from CMD 213 converted to big-endian; followed by a ne
 | 84  | Write | Set device time |
 | 210 | Read | Device state (ALL devices; CTW3 returns 26 bytes, W4/W5/CTW2 return 12 bytes) |
 | 211 | Read | Device config (DND times, LED, smart-mode on/off duration) — CTW3 only |
+| 221 | Write | Device settings (smart/battery intervals, LED, DND, detection flags) |
 | 66  | Read | Battery / ADC voltage |
 | 200 | Read | Firmware + hardware version |
 | 220 | Write | Power on/off / mode |
@@ -97,6 +98,13 @@ CMD 73 uses the device_id from CMD 213 converted to big-endian; followed by a ne
 - **W4/W5/CTW2** (CMD 210): 12+ bytes, big-endian
 - **CTW3** (CMD 210): 26+ bytes — has `suspend_status`, `electric_status`, `battery_level`, `detect_status`
   (CTW3 uses the **same CMD 210** as other devices, just with an extended 26-byte payload)
+
+**CTW3 CMD 221 settings payload — 12 bytes:**
+```
+[0] smartWork  [1] smartSleep  [2-3] batteryWork  [4-5] batterySleep
+[6] ledSwitch  [7] ledBrightness  [8] dnd  [9] childLock
+[10] smartInductiveSwitch  [11] batteryInductiveSwitch
+```
 
 ---
 

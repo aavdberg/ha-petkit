@@ -114,7 +114,9 @@
       "power": {"name": "Power"},
       "led": {"name": "LED"},
       "do_not_disturb": {"name": "Do Not Disturb"},
-      "child_lock": {"name": "Child Lock"}
+      "child_lock": {"name": "Child Lock"},
+      "smart_inductive_switch": {"name": "Smart Mode Detection"},
+      "battery_inductive_switch": {"name": "Battery Mode Detection"}
     }
   }
 }

@@ -58,6 +58,8 @@ _SETTINGS_FIELDS: tuple[str, ...] = (
     "is_locked",
     "battery_work_time",
     "battery_sleep_time",
+    "smart_inductive_switch",
+    "battery_inductive_switch",
     "led_on_minutes",
     "led_off_minutes",
     "dnd_start_minutes",

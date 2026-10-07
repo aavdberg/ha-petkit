@@ -74,6 +74,8 @@ class TestReconcileSettingsInto:
         data.smart_time_off = 15
         data.battery_work_time = 60
         data.battery_sleep_time = 30
+        data.smart_inductive_switch = 1
+        data.battery_inductive_switch = 1
 
         warned = _reconcile_settings_into(data, cache, warned=False, name="x", address="y")
 
@@ -82,6 +84,8 @@ class TestReconcileSettingsInto:
         assert cache["led_brightness"] == 5
         assert cache["smart_time_on"] == 10
         assert cache["battery_work_time"] == 60
+        assert cache["smart_inductive_switch"] == 1
+        assert cache["battery_inductive_switch"] == 1
         for field in _SETTINGS_FIELDS:
             assert field in cache
 
@@ -93,6 +97,8 @@ class TestReconcileSettingsInto:
         good.led_switch = 1
         good.led_brightness = 7
         good.smart_time_on = 20
+        good.smart_inductive_switch = 1
+        good.battery_inductive_switch = 1
         _reconcile_settings_into(good, cache, warned=False, name="x", address="y")
 
         # Step 2: a fresh data object simulating a poll where CMD 211 timed out.
@@ -106,6 +112,8 @@ class TestReconcileSettingsInto:
         assert fresh.led_switch == 1
         assert fresh.led_brightness == 7
         assert fresh.smart_time_on == 20
+        assert fresh.smart_inductive_switch == 1
+        assert fresh.battery_inductive_switch == 1
         # The data object is now treated as configured so subsequent CMD 221
         # writes do not zero out unrelated fields.
         assert fresh.config_loaded is True

@@ -26,7 +26,7 @@ Communicates directly over BLE — no cloud, no API token, no Petkit account req
 - **Number**: Smart mode work & sleep duration (minutes), LED brightness (max 3 on CTW3, 10 on others), battery work & sleep duration in seconds (CTW3)
 - **Time**: Do Not Disturb (DND) start & end times, LED schedule start & end times (non-CTW3)
 - **Buttons**: reset filter, pump on, pump off
-- **Switch**: power on/off
+- **Switches**: power on/off; CTW3 smart-mode and battery-mode detection
 - **ESPHome Bluetooth proxy support** — works transparently via Home Assistant's native Bluetooth stack
 
 ## Requirements
@@ -210,5 +210,4 @@ ruff format --check custom_components/
 # Auto-fix issues
 ruff check --fix custom_components/
 ```
-
 

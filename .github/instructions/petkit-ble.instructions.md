@@ -66,6 +66,7 @@ CTW2   → CTW2
 | 200 | `CMD_GET_FIRMWARE` | Read | payload[0]=hardware_version, payload[1]=firmware |
 | 210 | `CMD_GET_STATE` | Read | Device state (all models) |
 | 211 | `CMD_GET_CONFIG` | Read | Settings — **NOT sent to CTW3** (device never responds) |
+| 221 | `CMD_WRITE_SETTINGS` | Write | 12-byte CTW3 settings payload; includes smart/battery detection flags |
 | 66  | `CMD_GET_BATTERY` | Read | Battery voltage (non-CTW3) |
 | 220 | `CMD_SET_MODE` | Write | [mode, 0]: 0=off, 1=normal, 2=smart |
 | 222 | `CMD_RESET_FILTER` | Write | Empty payload; resets filter % to 100 |
@@ -87,6 +88,14 @@ CTW2   → CTW2
 [15-18] pumpRuntimeToday(uint32)  [19] detectStatus
 [20-21] supplyVoltageMv(int16)  [22-23] batteryVoltageMv(int16)
 [24] batteryPercent  [25] moduleStatus
+```
+
+**CMD 221 CTW3 settings payload — 12 bytes:**
+```
+[0] smartWorkingTime  [1] smartSleepTime  [2-3] batteryWorkingTime
+[4-5] batterySleepTime  [6] ledSwitch  [7] ledBrightness
+[8] doNotDisturb  [9] childLock
+[10] smartInductiveSwitch  [11] batteryInductiveSwitch
 ```
 
 ## CTW3 Quirks

@@ -28,14 +28,20 @@ async def async_setup_entry(
 ) -> None:
     """Set up Petkit BLE switches from a config entry."""
     coordinator: PetkitBleCoordinator = config_entry.runtime_data
-    async_add_entities(
-        [
-            PetkitPowerSwitch(coordinator),
-            PetkitSettingsSwitch(coordinator, "led", "led_switch"),
-            PetkitSettingsSwitch(coordinator, "do_not_disturb", "do_not_disturb_switch"),
-            PetkitSettingsSwitch(coordinator, "child_lock", "is_locked"),
-        ]
-    )
+    switches = [
+        PetkitPowerSwitch(coordinator),
+        PetkitSettingsSwitch(coordinator, "led", "led_switch"),
+        PetkitSettingsSwitch(coordinator, "do_not_disturb", "do_not_disturb_switch"),
+        PetkitSettingsSwitch(coordinator, "child_lock", "is_locked"),
+    ]
+    if coordinator.data is not None and coordinator.data.is_ctw3:
+        switches.extend(
+            [
+                PetkitSettingsSwitch(coordinator, "smart_inductive_switch", "smart_inductive_switch"),
+                PetkitSettingsSwitch(coordinator, "battery_inductive_switch", "battery_inductive_switch"),
+            ]
+        )
+    async_add_entities(switches)
 
 
 class PetkitPowerSwitch(PetkitBleEntity, SwitchEntity):
