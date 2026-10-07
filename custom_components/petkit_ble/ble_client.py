@@ -8,6 +8,7 @@ import logging
 import math
 import struct
 from dataclasses import dataclass
+from datetime import datetime
 
 from bleak import BleakClient
 from bleak.backends.device import BLEDevice
@@ -105,6 +106,10 @@ class PetkitFountainData:
     # Drink statistics
     drink_event_count: int = 0
 
+    # Cleaning guidance
+    last_cleaned: datetime | None = None
+    days_since_clean: int | None = None
+
     # CMD 66 battery (raw ADC voltage, little-endian, for non-CTW3)
     battery_voltage_mv_66: int = 0
 
@@ -114,6 +119,8 @@ class PetkitFountainData:
     # CTW3 battery working/sleep times (for settings write-back)
     battery_work_time: int = 0
     battery_sleep_time: int = 0
+    smart_inductive_switch: int | None = None
+    battery_inductive_switch: int | None = None
 
     # Raw CMD 210 payload as last received. Kept so the coordinator can log
     # a byte-by-byte diff between consecutive polls — a diagnostic aid for
@@ -579,6 +586,10 @@ class PetkitBleClient:
             data.do_not_disturb_switch = payload[8]
         if len(payload) >= 10:
             data.is_locked = payload[9]
+        if len(payload) >= 11:
+            data.smart_inductive_switch = payload[10]
+        if len(payload) >= 12:
+            data.battery_inductive_switch = payload[11]
         data.config_loaded = True
 
     @staticmethod
@@ -739,12 +750,14 @@ class PetkitBleClient:
     ) -> bool:
         """Connect, authenticate, send a single command, disconnect.
 
-        Returns True on success.
+        Returns True only when a matching response is received.
         """
         try:
             await self._connect()
             await self._authenticate(alias, secret)
-            await self._send_and_wait(cmd, FRAME_TYPE_SEND, data)
+            response = await self._send_and_wait(cmd, FRAME_TYPE_SEND, data)
+            if response is None:
+                return False
         except Exception:
             _LOGGER.exception("Error sending CMD %d", cmd)
             return False

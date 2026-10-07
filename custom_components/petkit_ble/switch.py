@@ -28,14 +28,20 @@ async def async_setup_entry(
 ) -> None:
     """Set up Petkit BLE switches from a config entry."""
     coordinator: PetkitBleCoordinator = config_entry.runtime_data
-    async_add_entities(
-        [
-            PetkitPowerSwitch(coordinator),
-            PetkitSettingsSwitch(coordinator, "led", "led_switch"),
-            PetkitSettingsSwitch(coordinator, "do_not_disturb", "do_not_disturb_switch"),
-            PetkitSettingsSwitch(coordinator, "child_lock", "is_locked"),
-        ]
-    )
+    switches = [
+        PetkitPowerSwitch(coordinator),
+        PetkitSettingsSwitch(coordinator, "led", "led_switch"),
+        PetkitSettingsSwitch(coordinator, "do_not_disturb", "do_not_disturb_switch"),
+        PetkitSettingsSwitch(coordinator, "child_lock", "is_locked"),
+    ]
+    if coordinator.data is not None and coordinator.data.is_ctw3:
+        switches.extend(
+            [
+                PetkitSettingsSwitch(coordinator, "smart_inductive_switch", "smart_inductive_switch"),
+                PetkitSettingsSwitch(coordinator, "battery_inductive_switch", "battery_inductive_switch"),
+            ]
+        )
+    async_add_entities(switches)
 
 
 class PetkitPowerSwitch(PetkitBleEntity, SwitchEntity):
@@ -70,11 +76,10 @@ class PetkitPowerSwitch(PetkitBleEntity, SwitchEntity):
         data = self.coordinator.data
 
         if data is not None and data.is_ctw3:
-            # CTW3: [power, suspend, mode] via protocol helper.
-            # suspend=1 activates the pump (normal mode); suspend=0 lets the
-            # device's internal timer manage cycling (smart mode).
+            # CTW3: [power, suspend, mode] via protocol helper. suspend=1 keeps the
+            # fountain running in both modes; suspend=0 leaves it suspended.
             raw_mode = data.mode if data.mode in (1, 2) else 1
-            suspend = power_state if raw_mode == 1 else 0
+            suspend = power_state
             payload = build_ctw3_mode_payload(power_state, suspend, raw_mode)
         else:
             # Generic W5/CTW2: byte[0] encodes power+mode (0=off, 1=normal, 2=smart)
@@ -105,7 +110,18 @@ class PetkitSettingsSwitch(PetkitBleEntity, SwitchEntity):
         """Return True when the setting is enabled."""
         if self.coordinator.data is None:
             return None
-        return bool(getattr(self.coordinator.data, self._field_name, 0))
+        value = getattr(self.coordinator.data, self._field_name, 0)
+        return None if value is None else bool(value)
+
+    @property
+    def available(self) -> bool:
+        """Require known CTW3 settings before allowing full-settings writes."""
+        if not super().available:
+            return False
+        data = self.coordinator.data
+        return not data.is_ctw3 or (
+            data.smart_inductive_switch is not None and data.battery_inductive_switch is not None
+        )
 
     async def async_turn_on(self, **kwargs) -> None:
         """Enable the setting."""
@@ -121,6 +137,9 @@ class PetkitSettingsSwitch(PetkitBleEntity, SwitchEntity):
         if data is None:
             return
         payload = build_full_settings_payload(data, **{self._field_name: value})
+        if payload is None:
+            _LOGGER.warning("Skipping CMD 221 write because CTW3 detection settings are unknown")
+            return
         success = await self.coordinator.async_send_command(CMD_WRITE_SETTINGS, payload)
         if success:
             # Persist the change in the coordinator's settings cache and live

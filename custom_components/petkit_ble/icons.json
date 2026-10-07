@@ -1,0 +1,13 @@
+{
+  "entity": {
+    "select": {
+      "mode": {
+        "default": "mdi:water-pump",
+        "state": {
+          "normal": "mdi:water-pump",
+          "smart": "mdi:leaf"
+        }
+      }
+    }
+  }
+}

@@ -5,7 +5,12 @@ from __future__ import annotations
 import struct
 from unittest.mock import patch
 
+from custom_components.petkit_ble.ble_client import (
+    PetkitBleClient,
+    PetkitFountainData,
+)
 from custom_components.petkit_ble.const import (
+    ALIAS_CTW3,
     FRAME_END,
     FRAME_HEADER,
     PETKIT_EPOCH_OFFSET,
@@ -14,6 +19,7 @@ from custom_components.petkit_ble.protocol import (
     build_change_mode_payload,
     build_ctw3_mode_payload,
     build_ctw3_select_mode_payload,
+    build_full_settings_payload,
     build_init_payload,
     build_settings_payload_ctw3,
     build_settings_payload_generic,
@@ -168,6 +174,8 @@ class TestBuildSettingsPayloadCTW3:
             led_brightness=8,
             dnd_enabled=1,
             child_lock=1,
+            smart_inductive_switch=1,
+            battery_inductive_switch=0,
         )
         assert result[0] == 5
         assert result[1] == 10
@@ -181,8 +189,51 @@ class TestBuildSettingsPayloadCTW3:
         assert result[7] == 8  # led_brightness
         assert result[8] == 1  # dnd_enabled
         assert result[9] == 1  # child_lock
-        assert result[10] == 0  # smart_inductive_switch
+        assert result[10] == 1  # smart_inductive_switch
         assert result[11] == 0  # battery_inductive_switch
+
+    def test_full_settings_payload_preserves_inductive_switches(self) -> None:
+        """Updating another setting must preserve both CTW3 detection flags."""
+        data = PetkitFountainData(
+            alias=ALIAS_CTW3,
+            smart_inductive_switch=1,
+            battery_inductive_switch=1,
+        )
+
+        result = build_full_settings_payload(data, led_brightness=5)
+
+        assert result[10:12] == [1, 1]
+
+    def test_full_settings_payload_requires_known_inductive_switches(self) -> None:
+        """Never build CMD 221 with default values for unknown CTW3 flags."""
+        data = PetkitFountainData(alias=ALIAS_CTW3, smart_inductive_switch=1)
+
+        assert build_full_settings_payload(data, led_brightness=5) is None
+
+    def test_config_parser_reads_inductive_switches(self) -> None:
+        """CMD 211 bytes 10 and 11 contain the CTW3 detection settings."""
+        data = PetkitFountainData(alias=ALIAS_CTW3)
+        payload = bytes([5, 10, 0, 60, 0, 30, 1, 5, 0, 0, 1, 1])
+
+        PetkitBleClient._parse_config_ctw3(data, payload)
+
+        assert data.smart_inductive_switch == 1
+        assert data.battery_inductive_switch == 1
+
+    def test_config_parser_keeps_missing_inductive_switches_unknown(self) -> None:
+        """A short CMD 211 response must not imply missing flag values are zero."""
+        data = PetkitFountainData(alias=ALIAS_CTW3)
+        PetkitBleClient._parse_config_ctw3(data, bytes([5, 10, 0, 60, 0, 30, 1, 5, 0, 0]))
+
+        assert data.config_loaded is True
+        assert data.smart_inductive_switch is None
+        assert data.battery_inductive_switch is None
+
+        partial = PetkitFountainData(alias=ALIAS_CTW3)
+        PetkitBleClient._parse_config_ctw3(partial, bytes([5, 10, 0, 60, 0, 30, 1, 5, 0, 0, 1]))
+
+        assert partial.smart_inductive_switch == 1
+        assert partial.battery_inductive_switch is None
 
     def test_real_device_payload_decoding(self) -> None:
         """Regression: payloads captured from a real CTW3.
@@ -270,6 +321,8 @@ class TestParseConfigCtw3:
                 led_brightness=6,
                 dnd_enabled=1,
                 child_lock=1,
+                smart_inductive_switch=1,
+                battery_inductive_switch=1,
             )
         )
         data = PetkitFountainData(alias="CTW3")
@@ -282,6 +335,8 @@ class TestParseConfigCtw3:
         assert data.led_switch == 1
         assert data.led_brightness == 6
         assert data.is_locked == 1
+        assert data.smart_inductive_switch == 1
+        assert data.battery_inductive_switch == 1
         assert data.config_loaded is True
 
 
@@ -313,9 +368,9 @@ class TestBuildCtw3SelectModePayload:
         """Selecting Normal => [1, 1, 1] (power on, pump active)."""
         assert build_ctw3_select_mode_payload(1) == [1, 1, 1]
 
-    def test_select_smart_always_sends_power_on_without_suspend(self) -> None:
-        """Selecting Smart => [1, 0, 2] (power on, timer-managed)."""
-        assert build_ctw3_select_mode_payload(2) == [1, 0, 2]
+    def test_select_smart_keeps_pump_running(self) -> None:
+        """Selecting Smart => [1, 1, 2]; suspend=0 would leave the fountain suspended."""
+        assert build_ctw3_select_mode_payload(2) == [1, 1, 2]
 
 
 class TestFrameFormat:

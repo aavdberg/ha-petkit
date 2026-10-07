@@ -51,17 +51,23 @@ def build_init_payload(device_id: int, secret: bytes) -> list[int]:
     return id_bytes + padded_secret
 
 
-def build_full_settings_payload(data: PetkitFountainData, **overrides: int) -> list[int]:
+def build_full_settings_payload(data: PetkitFountainData, **overrides: int) -> list[int] | None:
     """Build a CMD 221 payload from current data with field overrides.
 
     This is the single shared helper used by switch, number, and time platforms.
     """
     if data.alias in CTW3_ALIASES:
+        smart_inductive_switch = overrides.get("smart_inductive_switch", data.smart_inductive_switch)
+        battery_inductive_switch = overrides.get("battery_inductive_switch", data.battery_inductive_switch)
+        if smart_inductive_switch is None or battery_inductive_switch is None:
+            return None
         return build_settings_payload_ctw3(
             smart_work=overrides.get("smart_time_on", data.smart_time_on),
             smart_sleep=overrides.get("smart_time_off", data.smart_time_off),
             battery_work_time=overrides.get("battery_work_time", data.battery_work_time),
             battery_sleep_time=overrides.get("battery_sleep_time", data.battery_sleep_time),
+            smart_inductive_switch=smart_inductive_switch,
+            battery_inductive_switch=battery_inductive_switch,
             led_switch=overrides.get("led_switch", data.led_switch),
             led_brightness=overrides.get("led_brightness", data.led_brightness),
             dnd_enabled=overrides.get("do_not_disturb_switch", data.do_not_disturb_switch),
@@ -90,6 +96,8 @@ def build_settings_payload_ctw3(
     led_brightness: int = 1,
     dnd_enabled: int = 0,
     child_lock: int = 0,
+    smart_inductive_switch: int = 0,
+    battery_inductive_switch: int = 0,
 ) -> list[int]:
     """Build the payload for CMD 221 (write settings) for CTW3 devices.
 
@@ -97,7 +105,7 @@ def build_settings_payload_ctw3(
     [smart_work, smart_sleep,
      batt_work_hi, batt_work_lo, batt_sleep_hi, batt_sleep_lo,
      led_switch, led_brightness, dnd_enabled, child_lock,
-     smart_inductive_switch (0), battery_inductive_switch (0)]
+     smart_inductive_switch, battery_inductive_switch]
     """
     return [
         smart_work,
@@ -110,8 +118,8 @@ def build_settings_payload_ctw3(
         led_brightness,
         dnd_enabled,
         child_lock,
-        0,
-        0,
+        smart_inductive_switch,
+        battery_inductive_switch,
     ]
 
 
@@ -166,9 +174,10 @@ def build_ctw3_mode_payload(power: int, suspend: int, mode: int) -> list[int]:
     Layout: [power, suspend, mode]
 
     The suspend byte controls pump activation:
-      - 1 = pump active (required for normal mode to run)
-      - 0 = timer-managed (smart mode handles its own cycling)
-    When powering off, suspend is always forced to 0.
+      - 1 = running (Normal, or Smart cycling on its own timer)
+      - 0 = suspended (pump paused, LED off)
+    A CTW3 switched to Smart from its own button reports [1, 1, 2]; sending
+    [1, 0, 2] leaves it suspended. When powering off, suspend is forced to 0.
     """
     if power == 0:
         suspend = 0
@@ -186,8 +195,7 @@ def build_ctw3_select_mode_payload(mode: int) -> list[int]:
     leave the pump off.
 
     Returns:
-      - Normal (mode=1): [1, 1, 1]  (power on, pump active)
-      - Smart  (mode=2): [1, 0, 2]  (power on, timer-managed)
+      - Normal (mode=1): [1, 1, 1]  (power on, running)
+      - Smart  (mode=2): [1, 1, 2]  (power on, running on the smart timer)
     """
-    suspend = 1 if mode == 1 else 0
-    return build_ctw3_mode_payload(1, suspend, mode)
+    return build_ctw3_mode_payload(1, 1, mode)

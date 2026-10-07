@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
@@ -52,6 +53,14 @@ for mod_name in _HA_STUBS:
         sys.modules[mod_name] = mod
 
 
+def _ha_callback(func: Callable[..., Any]) -> Callable[..., Any]:
+    """Match Home Assistant's callback decorator in plain pytest runs."""
+    return func
+
+
+sys.modules["homeassistant.core"].callback = _ha_callback
+
+
 class StubEntity:
     """Stub base class for Home Assistant entity classes in plain pytest runs."""
 
@@ -84,6 +93,7 @@ class StubEntityDescription:
 
 for module_key, class_name in [
     ("homeassistant.helpers.update_coordinator", "CoordinatorEntity"),
+    ("homeassistant.helpers.update_coordinator", "DataUpdateCoordinator"),
     ("homeassistant.components.binary_sensor", "BinarySensorEntity"),
     ("homeassistant.components.number", "NumberEntity"),
     ("homeassistant.components.select", "SelectEntity"),

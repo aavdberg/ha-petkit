@@ -86,7 +86,8 @@
       "uvc_active": {"name": "Stérilisation UVC active"}
     },
     "button": {
-      "reset_filter": {"name": "Réinitialiser le filtre"}
+      "reset_filter": {"name": "Réinitialiser le filtre"},
+      "initialize_ctw3_settings": {"name": "Initialiser les paramètres CTW3"}
     },
     "number": {
       "smart_work_minutes": {"name": "Temps de fonctionnement (Mode Intelligent)"},
@@ -114,7 +115,9 @@
       "power": {"name": "Alimentation"},
       "led": {"name": "LED"},
       "do_not_disturb": {"name": "Ne pas déranger"},
-      "child_lock": {"name": "Verrouillage enfant"}
+      "child_lock": {"name": "Verrouillage enfant"},
+      "smart_inductive_switch": {"name": "Détection en mode intelligent"},
+      "battery_inductive_switch": {"name": "Détection en mode batterie"}
     }
   }
 }
