@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
+from typing import Any
 
 from homeassistant.components.button import ENTITY_ID_FORMAT, ButtonEntity, ButtonEntityDescription
 from homeassistant.core import HomeAssistant
@@ -21,7 +22,8 @@ _LOGGER = logging.getLogger(__name__)
 class PetkitButtonDescription(ButtonEntityDescription):
     """Button description with press action."""
 
-    press_fn: Callable[[PetkitBleCoordinator], list[tuple[int, list[int]]]]
+    press_fn: Callable[[PetkitBleCoordinator], list[tuple[int, list[int]]]] | None = None
+    async_press_fn: Callable[[PetkitBleCoordinator], Coroutine[Any, Any, None]] | None = None
 
 
 def _reset_filter_cmds(_coordinator: PetkitBleCoordinator) -> list[tuple[int, list[int]]]:
@@ -33,6 +35,11 @@ BUTTON_DESCRIPTIONS: tuple[PetkitButtonDescription, ...] = (
         key="reset_filter",
         translation_key="reset_filter",
         press_fn=_reset_filter_cmds,
+    ),
+    PetkitButtonDescription(
+        key="reset_clean",
+        translation_key="reset_clean",
+        async_press_fn=lambda coordinator: coordinator.async_reset_last_cleaned(),
     ),
 )
 
@@ -62,11 +69,16 @@ class PetkitBleButton(PetkitBleEntity, ButtonEntity):
         self.entity_description = description
 
     async def async_press(self) -> None:
-        """Send the button command to the device."""
-        for cmd, data in self.entity_description.press_fn(self.coordinator):
-            success = await self.coordinator.async_send_command(cmd, data)
-            if not success:
-                _LOGGER.error("Failed to send CMD %d for %s", cmd, self.entity_description.key)
-                return
+        """Send the button command or execute action."""
+        if self.entity_description.async_press_fn is not None:
+            await self.entity_description.async_press_fn(self.coordinator)
+            return
 
-        await self.coordinator.async_request_refresh()
+        if self.entity_description.press_fn is not None:
+            for cmd, data in self.entity_description.press_fn(self.coordinator):
+                success = await self.coordinator.async_send_command(cmd, data)
+                if not success:
+                    _LOGGER.error("Failed to send CMD %d for %s", cmd, self.entity_description.key)
+                    return
+
+            await self.coordinator.async_request_refresh()

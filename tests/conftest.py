@@ -84,6 +84,7 @@ class StubEntityDescription:
 
 for module_key, class_name in [
     ("homeassistant.helpers.update_coordinator", "CoordinatorEntity"),
+    ("homeassistant.helpers.update_coordinator", "DataUpdateCoordinator"),
     ("homeassistant.components.binary_sensor", "BinarySensorEntity"),
     ("homeassistant.components.number", "NumberEntity"),
     ("homeassistant.components.select", "SelectEntity"),

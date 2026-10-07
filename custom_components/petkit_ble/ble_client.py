@@ -8,6 +8,7 @@ import logging
 import math
 import struct
 from dataclasses import dataclass
+from datetime import datetime
 
 from bleak import BleakClient
 from bleak.backends.device import BLEDevice
@@ -104,6 +105,10 @@ class PetkitFountainData:
 
     # Drink statistics
     drink_event_count: int = 0
+
+    # Cleaning guidance
+    last_cleaned: datetime | None = None
+    days_since_clean: int | None = None
 
     # CMD 66 battery (raw ADC voltage, little-endian, for non-CTW3)
     battery_voltage_mv_66: int = 0
@@ -745,12 +750,14 @@ class PetkitBleClient:
     ) -> bool:
         """Connect, authenticate, send a single command, disconnect.
 
-        Returns True on success.
+        Returns True only when a matching response is received.
         """
         try:
             await self._connect()
             await self._authenticate(alias, secret)
-            await self._send_and_wait(cmd, FRAME_TYPE_SEND, data)
+            response = await self._send_and_wait(cmd, FRAME_TYPE_SEND, data)
+            if response is None:
+                return False
         except Exception:
             _LOGGER.exception("Error sending CMD %d", cmd)
             return False

@@ -131,6 +131,21 @@ SENSOR_DESCRIPTIONS: tuple[PetkitSensorEntityDescription, ...] = (
         value_fn=lambda d: d.filter_days_remaining,
     ),
     PetkitSensorEntityDescription(
+        key="days_since_clean",
+        translation_key="days_since_clean",
+        native_unit_of_measurement=UnitOfTime.DAYS,
+        device_class=SensorDeviceClass.DURATION,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda d: d.days_since_clean,
+    ),
+    PetkitSensorEntityDescription(
+        key="last_cleaned",
+        translation_key="last_cleaned",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda d: d.last_cleaned,
+    ),
+    PetkitSensorEntityDescription(
         key="firmware",
         translation_key="firmware",
         entity_category=EntityCategory.DIAGNOSTIC,

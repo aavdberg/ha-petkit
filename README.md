@@ -20,14 +20,24 @@ Communicates directly over BLE — no cloud, no API token, no Petkit account req
 
 ## Features
 
-- **Sensors**: filter life %, pump runtime, water purified, energy today, filter days remaining, battery (CTW3), RSSI
+- **Sensors**: filter life %, pump runtime, water purified, energy today, filter days remaining, days since clean, last cleaned, battery (CTW3), RSSI
 - **Binary sensors**: pump running, water missing, filter warning, hardware failure, DND, pet detected (CTW3), AC power (CTW3), low battery (CTW3), UVC active (CTW3)
 - **Select**: operating mode (Normal / Smart)
 - **Number**: Smart mode work & sleep duration (minutes), LED brightness (max 3 on CTW3, 10 on others), battery work & sleep duration in seconds (CTW3)
 - **Time**: Do Not Disturb (DND) start & end times, LED schedule start & end times (non-CTW3)
-- **Buttons**: reset filter, pump on, pump off
+- **Buttons**: reset filter, reset clean counter, pump on, pump off
 - **Switches**: power on/off; CTW3 smart-mode and battery-mode detection
 - **ESPHome Bluetooth proxy support** — works transparently via Home Assistant's native Bluetooth stack
+
+## Documentation & Wiki
+
+For full documentation, entity reference, setup guides, and automation examples, see the [Documentation Suite](docs/README.md):
+
+- [Supported Devices & Hardware Variants](docs/supported-devices.md)
+- [Entity Reference & Calculation Formulas](docs/entities.md)
+- [Installation & ESPHome Proxy Setup](docs/setup.md)
+- [Troubleshooting & Debug Logging](docs/troubleshooting.md)
+- [Automation Examples](docs/automations.md)
 
 ## Requirements
 
@@ -210,4 +220,3 @@ ruff format --check custom_components/
 # Auto-fix issues
 ruff check --fix custom_components/
 ```
-

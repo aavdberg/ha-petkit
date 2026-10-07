@@ -41,5 +41,70 @@
       "repair_cancelled": "Re-pairing cancelled. The device was left untouched.",
       "unsupported_device": "This device model may not be fully supported by this integration. Please report this issue on GitHub with your device model and logs."
     }
+  },
+  "entity": {
+      "sensor": {
+        "filter_percent": {"name": "Filter Life"},
+        "pump_runtime_today": {"name": "Pump Runtime Today"},
+        "pump_runtime": {"name": "Total Pump Runtime"},
+        "battery_percent": {"name": "Battery"},
+        "battery_voltage_mv": {"name": "Battery Voltage"},
+        "water_purified_today": {"name": "Water Purified Today"},
+        "energy_today": {"name": "Energy Today"},
+        "power": {"name": "Power"},
+        "energy_today_wh": {"name": "Energy Today (Wh)"},
+        "filter_days_remaining": {"name": "Filter Days Remaining"},
+        "days_since_clean": {"name": "Days Since Cleaned"},
+        "last_cleaned": {"name": "Last Cleaned"},
+        "firmware": {"name": "Firmware"},
+        "hardware_version": {"name": "Hardware Version"},
+        "rssi": {"name": "Signal Strength"},
+        "drink_count": {"name": "Drink Events Today"},
+        "state_tail_hex": {"name": "CTW3 State Tail (hex)"}
+      },
+      "binary_sensor": {
+        "pump_running": {"name": "Pump Running"},
+        "warning_water_missing": {"name": "Water Missing"},
+        "warning_filter": {"name": "Filter Warning"},
+        "warning_breakdown": {"name": "Hardware Failure"},
+        "dnd_active": {"name": "Do Not Disturb"},
+        "pet_detected": {"name": "Pet Drinking"},
+        "on_ac_power": {"name": "AC Power"},
+        "low_battery": {"name": "Low Battery"},
+        "suspended": {"name": "Pump Suspended"},
+        "uvc_active": {"name": "UVC Sterilization"}
+      },
+      "button": {
+        "reset_filter": {"name": "Reset Filter"},
+        "reset_clean": {"name": "Reset Clean Counter"}
+      },
+      "number": {
+        "smart_work_minutes": {"name": "Smart Mode Work Time"},
+        "smart_sleep_minutes": {"name": "Smart Mode Sleep Time"},
+        "led_brightness": {"name": "LED Brightness"},
+        "battery_work_seconds": {"name": "Battery Work Duration"},
+        "battery_sleep_seconds": {"name": "Battery Sleep Duration"}
+      },
+      "time": {
+        "led_on_time": {"name": "LED On Time"},
+        "led_off_time": {"name": "LED Off Time"},
+        "dnd_start_time": {"name": "DND Start Time"},
+        "dnd_end_time": {"name": "DND End Time"}
+      },
+      "select": {
+        "mode": {
+          "name": "Mode",
+          "state": {
+            "normal": "Normal",
+            "smart": "Smart"
+          }
+        }
+      },
+      "switch": {
+        "power": {"name": "Power"},
+        "led": {"name": "LED"},
+        "do_not_disturb": {"name": "Do Not Disturb"},
+        "child_lock": {"name": "Child Lock"}
+      }
   }
 }

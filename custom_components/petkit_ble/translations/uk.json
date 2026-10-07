@@ -67,6 +67,8 @@
       "power": {"name": "Потужність"},
       "energy_today_wh": {"name": "Споживання енергії сьогодні (Вт·год)"},
       "filter_days_remaining": {"name": "Залишилось днів фільтра"},
+      "days_since_clean": {"name": "Днів з моменту очищення"},
+      "last_cleaned": {"name": "Останнє очищення"},
       "firmware": {"name": "Прошивка"},
       "hardware_version": {"name": "Версія апаратного забезпечення"},
       "rssi": {"name": "Рівень сигналу"},
@@ -86,7 +88,8 @@
       "uvc_active": {"name": "УФ-стерилізація"}
     },
     "button": {
-      "reset_filter": {"name": "Скинути фільтр"}
+      "reset_filter": {"name": "Скинути фільтр"},
+      "reset_clean": {"name": "Скинути лічильник очищення"}
     },
     "number": {
       "smart_work_minutes": {"name": "Час роботи смарт-режиму"},

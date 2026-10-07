@@ -65,7 +65,7 @@ CTW2   → CTW2
 | 84  | `CMD_SET_TIME` | Write | Petkit epoch offset = 946684800 (2000-01-01) |
 | 200 | `CMD_GET_FIRMWARE` | Read | payload[0]=hardware_version, payload[1]=firmware |
 | 210 | `CMD_GET_STATE` | Read | Device state (all models) |
-| 211 | `CMD_GET_CONFIG` | Read | Settings — **NOT sent to CTW3** (device never responds) |
+| 211 | `CMD_GET_CONFIG` | Read | Settings; requested for CTW3, but firmware 111 is known not to respond |
 | 221 | `CMD_WRITE_SETTINGS` | Write | 12-byte CTW3 settings payload; includes smart/battery detection flags |
 | 66  | `CMD_GET_BATTERY` | Read | Battery voltage (non-CTW3) |
 | 220 | `CMD_SET_MODE` | Write | [mode, 0]: 0=off, 1=normal, 2=smart |
@@ -100,7 +100,7 @@ CTW2   → CTW2
 
 ## CTW3 Quirks
 
-- **CMD 211 is skipped** — CTW3 never responds; skipping saves 5s per poll
+- **CMD 211 is requested for CTW3** — firmware 111 is known not to respond, so settings may remain unavailable until a successful response or write
 - **CMD 230 (0xe6) unsolicited push** — CTW3 sends extended state pushes at any time; `_send_and_wait` discards mismatched cmd bytes via `asyncio.Queue`
 - **Auth uses `device_id_be` from CMD 213** — do NOT use `[0]*8` for CTW3 anymore (PR #17 fixed this)
 
