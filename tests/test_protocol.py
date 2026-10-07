@@ -204,6 +204,12 @@ class TestBuildSettingsPayloadCTW3:
 
         assert result[10:12] == [1, 1]
 
+    def test_full_settings_payload_requires_known_inductive_switches(self) -> None:
+        """Never build CMD 221 with default values for unknown CTW3 flags."""
+        data = PetkitFountainData(alias=ALIAS_CTW3, smart_inductive_switch=1)
+
+        assert build_full_settings_payload(data, led_brightness=5) is None
+
     def test_config_parser_reads_inductive_switches(self) -> None:
         """CMD 211 bytes 10 and 11 contain the CTW3 detection settings."""
         data = PetkitFountainData(alias=ALIAS_CTW3)
@@ -213,6 +219,21 @@ class TestBuildSettingsPayloadCTW3:
 
         assert data.smart_inductive_switch == 1
         assert data.battery_inductive_switch == 1
+
+    def test_config_parser_keeps_missing_inductive_switches_unknown(self) -> None:
+        """A short CMD 211 response must not imply missing flag values are zero."""
+        data = PetkitFountainData(alias=ALIAS_CTW3)
+        PetkitBleClient._parse_config_ctw3(data, bytes([5, 10, 0, 60, 0, 30, 1, 5, 0, 0]))
+
+        assert data.config_loaded is True
+        assert data.smart_inductive_switch is None
+        assert data.battery_inductive_switch is None
+
+        partial = PetkitFountainData(alias=ALIAS_CTW3)
+        PetkitBleClient._parse_config_ctw3(partial, bytes([5, 10, 0, 60, 0, 30, 1, 5, 0, 0, 1]))
+
+        assert partial.smart_inductive_switch == 1
+        assert partial.battery_inductive_switch is None
 
     def test_real_device_payload_decoding(self) -> None:
         """Regression: payloads captured from a real CTW3.

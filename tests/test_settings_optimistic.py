@@ -89,6 +89,26 @@ class TestReconcileSettingsInto:
         for field in _SETTINGS_FIELDS:
             assert field in cache
 
+    def test_unknown_inductive_flags_are_not_cached_as_zero(self) -> None:
+        cache: dict[str, int] = {}
+        data = PetkitFountainData(alias=ALIAS_CTW3)
+        data.config_loaded = True
+
+        _reconcile_settings_into(data, cache, warned=False, name="x", address="y")
+
+        assert "smart_inductive_switch" not in cache
+        assert "battery_inductive_switch" not in cache
+
+    def test_partial_poll_restores_previously_known_inductive_flags(self) -> None:
+        cache = {"smart_inductive_switch": 1, "battery_inductive_switch": 0}
+        data = PetkitFountainData(alias=ALIAS_CTW3)
+        data.config_loaded = True
+
+        _reconcile_settings_into(data, cache, warned=False, name="x", address="y")
+
+        assert data.smart_inductive_switch == 1
+        assert data.battery_inductive_switch == 0
+
     def test_failed_poll_with_cache_restores_values(self) -> None:
         cache: dict[str, int] = {}
         # Step 1: a successful poll populates the cache.

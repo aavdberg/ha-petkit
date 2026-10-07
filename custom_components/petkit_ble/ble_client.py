@@ -114,8 +114,8 @@ class PetkitFountainData:
     # CTW3 battery working/sleep times (for settings write-back)
     battery_work_time: int = 0
     battery_sleep_time: int = 0
-    smart_inductive_switch: int = 0
-    battery_inductive_switch: int = 0
+    smart_inductive_switch: int | None = None
+    battery_inductive_switch: int | None = None
 
     # Raw CMD 210 payload as last received. Kept so the coordinator can log
     # a byte-by-byte diff between consecutive polls — a diagnostic aid for

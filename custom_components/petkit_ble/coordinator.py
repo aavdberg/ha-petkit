@@ -92,7 +92,11 @@ def _reconcile_settings_into(
     """
     if data.config_loaded:
         for field in _SETTINGS_FIELDS:
-            cache[field] = getattr(data, field)
+            value = getattr(data, field)
+            if value is not None:
+                cache[field] = value
+            elif field in cache:
+                setattr(data, field, cache[field])
         return warned
     if cache:
         for field, value in cache.items():
