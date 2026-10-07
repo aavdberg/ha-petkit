@@ -58,6 +58,8 @@ _SETTINGS_FIELDS: tuple[str, ...] = (
     "is_locked",
     "battery_work_time",
     "battery_sleep_time",
+    "smart_inductive_switch",
+    "battery_inductive_switch",
     "led_on_minutes",
     "led_off_minutes",
     "dnd_start_minutes",
@@ -90,7 +92,11 @@ def _reconcile_settings_into(
     """
     if data.config_loaded:
         for field in _SETTINGS_FIELDS:
-            cache[field] = getattr(data, field)
+            value = getattr(data, field)
+            if value is not None:
+                cache[field] = value
+            elif field in cache:
+                setattr(data, field, cache[field])
         return warned
     if cache:
         for field, value in cache.items():

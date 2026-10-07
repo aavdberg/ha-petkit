@@ -51,17 +51,23 @@ def build_init_payload(device_id: int, secret: bytes) -> list[int]:
     return id_bytes + padded_secret
 
 
-def build_full_settings_payload(data: PetkitFountainData, **overrides: int) -> list[int]:
+def build_full_settings_payload(data: PetkitFountainData, **overrides: int) -> list[int] | None:
     """Build a CMD 221 payload from current data with field overrides.
 
     This is the single shared helper used by switch, number, and time platforms.
     """
     if data.alias in CTW3_ALIASES:
+        smart_inductive_switch = overrides.get("smart_inductive_switch", data.smart_inductive_switch)
+        battery_inductive_switch = overrides.get("battery_inductive_switch", data.battery_inductive_switch)
+        if smart_inductive_switch is None or battery_inductive_switch is None:
+            return None
         return build_settings_payload_ctw3(
             smart_work=overrides.get("smart_time_on", data.smart_time_on),
             smart_sleep=overrides.get("smart_time_off", data.smart_time_off),
             battery_work_time=overrides.get("battery_work_time", data.battery_work_time),
             battery_sleep_time=overrides.get("battery_sleep_time", data.battery_sleep_time),
+            smart_inductive_switch=smart_inductive_switch,
+            battery_inductive_switch=battery_inductive_switch,
             led_switch=overrides.get("led_switch", data.led_switch),
             led_brightness=overrides.get("led_brightness", data.led_brightness),
             dnd_enabled=overrides.get("do_not_disturb_switch", data.do_not_disturb_switch),
@@ -90,6 +96,8 @@ def build_settings_payload_ctw3(
     led_brightness: int = 1,
     dnd_enabled: int = 0,
     child_lock: int = 0,
+    smart_inductive_switch: int = 0,
+    battery_inductive_switch: int = 0,
 ) -> list[int]:
     """Build the payload for CMD 221 (write settings) for CTW3 devices.
 
@@ -97,7 +105,7 @@ def build_settings_payload_ctw3(
     [smart_work, smart_sleep,
      batt_work_hi, batt_work_lo, batt_sleep_hi, batt_sleep_lo,
      led_switch, led_brightness, dnd_enabled, child_lock,
-     smart_inductive_switch (0), battery_inductive_switch (0)]
+     smart_inductive_switch, battery_inductive_switch]
     """
     return [
         smart_work,
@@ -110,8 +118,8 @@ def build_settings_payload_ctw3(
         led_brightness,
         dnd_enabled,
         child_lock,
-        0,
-        0,
+        smart_inductive_switch,
+        battery_inductive_switch,
     ]
 
 
