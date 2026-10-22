@@ -21,6 +21,7 @@ from custom_components.petkit_ble.const import (
 from custom_components.petkit_ble.number import NUMBER_DESCRIPTIONS
 from custom_components.petkit_ble.sensor import SENSOR_DESCRIPTIONS
 from custom_components.petkit_ble.sensor import async_setup_entry as async_setup_sensor
+from custom_components.petkit_ble.switch import async_setup_entry as async_setup_switch
 from custom_components.petkit_ble.time import TIME_DESCRIPTIONS
 
 
@@ -88,6 +89,33 @@ async def test_ctw3_entity_setup() -> None:
 
     supported_times = [d.key for d in TIME_DESCRIPTIONS if d.supported_fn(data)]
     assert len(supported_times) == 0
+
+
+@pytest.mark.asyncio
+async def test_inductive_switches_are_ctw3_only() -> None:
+    """Only CTW3 should expose its smart- and battery-mode detection switches."""
+    for alias, expected in (
+        (ALIAS_CTW3, {"smart_inductive_switch", "battery_inductive_switch"}),
+        (ALIAS_W4X, set()),
+    ):
+        hass = MagicMock()
+        config_entry = MagicMock()
+        config_entry.data = {
+            CONF_MODEL: alias,
+            CONF_ADDRESS: "AA:BB:CC:DD:EE:FF",
+            CONF_NAME: "Petkit",
+        }
+        coordinator = MagicMock()
+        coordinator.hass = hass
+        coordinator.config_entry = config_entry
+        coordinator.data = PetkitFountainData(alias=alias)
+        config_entry.runtime_data = coordinator
+
+        added_switches = []
+        await async_setup_switch(hass, config_entry, added_switches.extend)
+
+        keys = {entity.entity_description.key for entity in added_switches}
+        assert keys & {"smart_inductive_switch", "battery_inductive_switch"} == expected
 
 
 @pytest.mark.asyncio

@@ -124,7 +124,12 @@ class PetkitBleNumber(PetkitBleEntity, NumberEntity):
         """Return True only when data is present and the device supports this entity."""
         if not super().available:
             return False
-        return self.entity_description.available_fn(self.coordinator.data)
+        data = self.coordinator.data
+        if not self.entity_description.available_fn(data):
+            return False
+        return not data.is_ctw3 or (
+            data.smart_inductive_switch is not None and data.battery_inductive_switch is not None
+        )
 
     @property
     def native_max_value(self) -> float | None:
@@ -150,6 +155,9 @@ class PetkitBleNumber(PetkitBleEntity, NumberEntity):
             return
         int_value = int(value)
         payload = build_full_settings_payload(data, **{self.entity_description.field_name: int_value})
+        if payload is None:
+            _LOGGER.warning("Skipping CMD 221 write because CTW3 detection settings are unknown")
+            return
         success = await self.coordinator.async_send_command(CMD_WRITE_SETTINGS, payload)
         if success:
             # Persist via coordinator-level cache so the value survives the

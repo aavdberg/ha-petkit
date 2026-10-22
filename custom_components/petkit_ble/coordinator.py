@@ -5,8 +5,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from dataclasses import dataclass
-from datetime import timedelta
+from dataclasses import dataclass, replace
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.bluetooth import (
@@ -30,6 +30,7 @@ if TYPE_CHECKING:
 
 from .ble_client import PetkitBleClient, PetkitFountainData
 from .const import (
+    CMD_WRITE_SETTINGS,
     CONF_ADDRESS,
     CONF_DEVICE_SECRET,
     CONF_MODEL,
@@ -40,6 +41,7 @@ from .const import (
     MODE_SMART,
     POLL_INTERVAL,
 )
+from .protocol import build_full_settings_payload
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -58,10 +60,24 @@ _SETTINGS_FIELDS: tuple[str, ...] = (
     "is_locked",
     "battery_work_time",
     "battery_sleep_time",
+    "smart_inductive_switch",
+    "battery_inductive_switch",
     "led_on_minutes",
     "led_off_minutes",
     "dnd_start_minutes",
     "dnd_end_minutes",
+)
+_SETTINGS_BYTE_FIELDS = frozenset(
+    {
+        "smart_time_on",
+        "smart_time_off",
+        "led_switch",
+        "led_brightness",
+        "do_not_disturb_switch",
+        "is_locked",
+        "smart_inductive_switch",
+        "battery_inductive_switch",
+    }
 )
 
 # How long to wait for a connectable advertisement before giving up. The proxy
@@ -90,7 +106,11 @@ def _reconcile_settings_into(
     """
     if data.config_loaded:
         for field in _SETTINGS_FIELDS:
-            cache[field] = getattr(data, field)
+            value = getattr(data, field)
+            if value is not None:
+                cache[field] = value
+            elif field in cache:
+                setattr(data, field, cache[field])
         return warned
     if cache:
         for field, value in cache.items():
@@ -108,6 +128,24 @@ def _reconcile_settings_into(
         )
         return True
     return warned
+
+
+async def _load_settings_cache_into(cache: dict[str, int], store: Any) -> None:
+    """Restore persisted settings into the coordinator cache."""
+    try:
+        stored = await store.async_load()
+    except Exception as exc:
+        _LOGGER.debug("Failed to load settings store: %s", exc)
+        return
+    if not isinstance(stored, dict):
+        return
+    for field in _SETTINGS_FIELDS:
+        value = stored.get(field)
+        maximum = 0xFF if field in _SETTINGS_BYTE_FIELDS else 0xFFFF
+        if isinstance(value, int) and not isinstance(value, bool) and 0 <= value <= maximum:
+            cache[field] = value
+        elif value is not None:
+            _LOGGER.debug("Discarding invalid stored setting %s=%r", field, value)
 
 
 def _reconcile_mode_into(
@@ -286,6 +324,82 @@ async def _track_drink_event_into(
             _LOGGER.debug("Failed to persist drink-count store: %s", exc)
 
 
+@dataclass
+class _LastCleanedState:
+    """Mutable holder for the last cleaned timestamp state.
+
+    Lives on the coordinator across polls. Extracted into a dataclass so the
+    persistence and calculation logic can be unit-tested via free functions
+    (``_load_clean_state_into`` / ``_apply_clean_state_into``) without
+    instantiating the full ``DataUpdateCoordinator``.
+    """
+
+    last_cleaned_iso: str = ""
+
+
+def _parse_iso_timestamp(raw_iso: str) -> datetime | None:
+    """Parse ISO timestamp string cleanly."""
+    if not raw_iso or not isinstance(raw_iso, str):
+        return None
+    try:
+        dt = datetime.fromisoformat(raw_iso)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=UTC)
+        return dt
+    except (TypeError, ValueError):
+        return None
+
+
+async def _load_clean_state_into(state: _LastCleanedState, store: Any) -> None:
+    """Populate ``state`` from a ``Store`` snapshot if one exists.
+
+    Storage failures are swallowed at debug level — they must never block
+    integration setup. Initializes to current time if store is missing or corrupt.
+    """
+    try:
+        stored = await store.async_load()
+    except Exception as exc:
+        _LOGGER.debug("Failed to load last-cleaned store: %s", exc)
+        stored = None
+
+    if stored and isinstance(stored, dict) and stored.get("last_cleaned"):
+        raw_iso = str(stored["last_cleaned"])
+        if _parse_iso_timestamp(raw_iso) is not None:
+            state.last_cleaned_iso = raw_iso
+            return
+
+    now_iso = dt_util.now().isoformat()
+    state.last_cleaned_iso = now_iso
+    try:
+        await store.async_save({"last_cleaned": now_iso})
+    except Exception as exc:
+        _LOGGER.debug("Failed to save initial last-cleaned store: %s", exc)
+
+
+def _apply_clean_state_into(
+    state: _LastCleanedState,
+    data: PetkitFountainData,
+) -> None:
+    """Calculate and set ``last_cleaned`` and ``days_since_clean`` on ``data``."""
+    if not state.last_cleaned_iso:
+        state.last_cleaned_iso = dt_util.now().isoformat()
+
+    cleaned_dt = _parse_iso_timestamp(state.last_cleaned_iso)
+    if cleaned_dt is None:
+        cleaned_dt = dt_util.now()
+        if isinstance(cleaned_dt, datetime) and cleaned_dt.tzinfo is None:
+            cleaned_dt = cleaned_dt.replace(tzinfo=UTC)
+        state.last_cleaned_iso = cleaned_dt.isoformat()
+
+    data.last_cleaned = cleaned_dt
+    now = dt_util.now()
+    if isinstance(now, datetime) and now.tzinfo is None:
+        now = now.replace(tzinfo=UTC)
+
+    delta_seconds = max(0.0, (now - cleaned_dt).total_seconds())
+    data.days_since_clean = int(delta_seconds // 86400)
+
+
 class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
     """Coordinator that polls a Petkit fountain over BLE."""
 
@@ -315,10 +429,20 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
         self._drink_store: Store = Store(hass, version=1, key=f"{DOMAIN}_drink_count_{config_entry.entry_id}")
         self._mode_store: Store = Store(hass, version=1, key=f"{DOMAIN}_mode_{config_entry.entry_id}")
 
+        # Track cleaning guidance state (last cleaned timestamp)
+        self._clean_state = _LastCleanedState()
+        self._clean_store: Store = Store(hass, version=1, key=f"{DOMAIN}_last_cleaned_{config_entry.entry_id}")
+
         # Cache for settings fields (CMD 211 / CMD 221). See _SETTINGS_FIELDS
         # docstring for rationale. Populated either by a successful CMD 211
-        # parse or by an entity-driven write via apply_setting_optimistic().
+        # parse or by an entity-driven write. Persisted because some firmware
+        # revisions never reply to CMD 211.
         self._settings_cache: dict[str, int] = {}
+        self._settings_store: Store = Store(
+            hass,
+            version=1,
+            key=f"{DOMAIN}_settings_{config_entry.entry_id}",
+        )
         self._warned_no_config: bool = False
 
         # Cache the last valid mode so a device reporting mode=0 while off or
@@ -338,14 +462,64 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
         )
 
     async def async_load_persistent_state(self) -> None:
-        """Load the persisted drink-event counter and mode from disk.
+        """Load persisted drink, mode, cleaning, and confirmed setting state.
 
         Called once before the first refresh so a Home Assistant restart or
-        integration reload no longer wipes today's count to zero or loses the
-        last known operation mode.
+        integration reload no longer wipes today's count to zero, loses the
+        last known operation mode or settings, or resets the last-cleaned timestamp.
         """
         await _load_drink_state_into(self._drink_state, self._drink_store)
         self._mode_cache = await _load_mode_state_into(self._mode_store)
+        await _load_clean_state_into(self._clean_state, self._clean_store)
+        await _load_settings_cache_into(self._settings_cache, self._settings_store)
+
+    async def async_reset_last_cleaned(self) -> None:
+        """Reset the last-cleaned timestamp to current time and persist."""
+        now_iso = dt_util.now().isoformat()
+        self._clean_state.last_cleaned_iso = now_iso
+        try:
+            await self._clean_store.async_save({"last_cleaned": now_iso})
+        except Exception as exc:
+            _LOGGER.debug("Failed to save last-cleaned store on reset: %s", exc)
+
+        if self.data is not None:
+            _apply_clean_state_into(self._clean_state, self.data)
+            self.async_set_updated_data(self.data)
+
+    async def async_initialize_ctw3_settings(self) -> None:
+        """Initialize unread CTW3 settings with detection disabled."""
+        async with self._ble_lock:
+            data = self.data
+            if data is None or not data.is_ctw3:
+                return
+
+            settings = replace(data)
+            for field, value in self._settings_cache.items():
+                setattr(settings, field, value)
+            if settings.smart_inductive_switch is not None and settings.battery_inductive_switch is not None:
+                return
+
+            detection_settings = {
+                "smart_inductive_switch": 0,
+                "battery_inductive_switch": 0,
+            }
+            payload = build_full_settings_payload(settings, **detection_settings)
+            if payload is None:
+                _LOGGER.error("Cannot initialize CTW3 settings because the settings payload is incomplete")
+                return
+            if not await self._async_send_command_locked(CMD_WRITE_SETTINGS, payload):
+                _LOGGER.error("Failed to initialize CTW3 settings for %s", self._name)
+                return
+
+            for field in _SETTINGS_FIELDS:
+                value = detection_settings.get(field, getattr(settings, field))
+                if value is not None:
+                    self._settings_cache[field] = value
+                    setattr(data, field, value)
+            data.config_loaded = True
+            self._schedule_settings_save()
+            self.async_set_updated_data(data)
+        await self.async_request_refresh()
 
     async def _track_drink_event(self, data: PetkitFountainData) -> None:
         """Thin wrapper around ``_track_drink_event_into`` for the poll loop."""
@@ -481,6 +655,7 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
                 data = await client.async_poll(self._alias, self._secret, initial_mode=self._mode_cache)
             except Exception as exc:
                 raise UpdateFailed(f"Error communicating with {self._name}: {exc}") from exc
+            self._reconcile_settings(data)
 
         _LOGGER.debug(
             "Polled %s: power=%s mode=%s firmware=%s", self._name, data.power_status, data.mode, data.firmware
@@ -507,7 +682,6 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
                 )
             self._prev_raw_state = data.raw_state
 
-        self._reconcile_settings(data)
         self._mode_cache = _reconcile_mode_into(data, self._mode_cache, self._mode_store)
 
         # Self-heal persistence: if the BLE client inferred a corrected alias
@@ -533,6 +707,9 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
         # restarts. See ``_track_drink_event`` for full rationale.
         await self._track_drink_event(data)
 
+        # Apply persistent cleaning guidance state
+        _apply_clean_state_into(self._clean_state, data)
+
         # RSSI from the most recent BLE advertisement (no connection required)
         service_info = async_last_service_info(self.hass, self._address, connectable=False)
         if service_info is not None:
@@ -548,6 +725,7 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
         revert to dataclass defaults — visibly flipping switches back in the
         UI and zeroing unrelated fields on the next CMD 221 write.
         """
+        previous_cache = self._settings_cache.copy()
         self._warned_no_config = _reconcile_settings_into(
             data,
             self._settings_cache,
@@ -555,6 +733,21 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
             name=self._name,
             address=self._address,
         )
+        if self._settings_cache != previous_cache:
+            self._schedule_settings_save()
+
+    async def _async_send_command_locked(self, cmd: int, data: list[int]) -> bool:
+        """Send a BLE command while the caller holds the poll lock."""
+        client = await self._get_ble_client()
+        if client is None:
+            _LOGGER.warning(
+                "Cannot send CMD %d: %s (%s) not reachable via Bluetooth",
+                cmd,
+                self._name,
+                self._address,
+            )
+            return False
+        return await client.async_send_command(cmd, data, self._alias, self._secret)
 
     async def async_send_command(self, cmd: int, data: list[int]) -> bool:
         """Send a single BLE command, serialised with the poll lock.
@@ -563,16 +756,14 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
         command failed.
         """
         async with self._ble_lock:
-            client = await self._get_ble_client()
-            if client is None:
-                _LOGGER.warning(
-                    "Cannot send CMD %d: %s (%s) not reachable via Bluetooth",
-                    cmd,
-                    self._name,
-                    self._address,
-                )
-                return False
-            return await client.async_send_command(cmd, data, self._alias, self._secret)
+            return await self._async_send_command_locked(cmd, data)
+
+    def _schedule_settings_save(self) -> None:
+        """Schedule persisting the latest full settings snapshot."""
+        try:
+            self._settings_store.async_delay_save(lambda: self._settings_cache.copy(), 5.0)
+        except Exception as exc:
+            _LOGGER.debug("Failed to schedule settings store: %s", exc)
 
     @callback
     def apply_setting_optimistic(self, field: str, value: int) -> None:
@@ -596,6 +787,7 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
             setattr(self.data, field, value)
             self.data.config_loaded = True
             self.async_set_updated_data(self.data)
+        self._schedule_settings_save()
 
     @callback
     def apply_mode_optimistic(self, mode: int) -> None:

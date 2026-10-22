@@ -124,6 +124,9 @@ class PetkitBleTime(PetkitBleEntity, TimeEntity):
             return
         minutes = _time_to_minutes(value)
         payload = build_full_settings_payload(data, **{self.entity_description.field_name: minutes})
+        if payload is None:
+            _LOGGER.warning("Skipping CMD 221 write because CTW3 detection settings are unknown")
+            return
         success = await self.coordinator.async_send_command(CMD_WRITE_SETTINGS, payload)
         if success:
             self.coordinator.apply_setting_optimistic(self.entity_description.field_name, minutes)
