@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import struct
-from unittest.mock import patch
+from datetime import UTC, datetime, timedelta, timezone
 
 from custom_components.petkit_ble.ble_client import (
     PetkitBleClient,
@@ -41,21 +41,47 @@ class TestBuildTimeSyncPayload:
         result = build_time_sync_payload()
         assert result[0] == 0
 
-    def test_last_byte_thirteen(self) -> None:
-        """Last byte is always 13."""
-        result = build_time_sync_payload()
-        assert result[5] == 13
+    def test_timezone_byte_utc(self) -> None:
+        """Timezone byte is UTC offset + 12, so UTC encodes as 12."""
+        now = datetime(2026, 1, 15, 12, 0, tzinfo=UTC)
+        assert build_time_sync_payload(now)[5] == 12
+
+    def test_timezone_byte_cet(self) -> None:
+        """CET (UTC+1) encodes as 13."""
+        now = datetime(2026, 1, 15, 12, 0, tzinfo=timezone(timedelta(hours=1)))
+        assert build_time_sync_payload(now)[5] == 13
+
+    def test_timezone_byte_cest(self) -> None:
+        """CEST (UTC+2, summer time) encodes as 14."""
+        now = datetime(2026, 7, 15, 12, 0, tzinfo=timezone(timedelta(hours=2)))
+        assert build_time_sync_payload(now)[5] == 14
+
+    def test_timezone_byte_negative_offset(self) -> None:
+        """US Eastern (UTC-5) encodes as 7."""
+        now = datetime(2026, 1, 15, 12, 0, tzinfo=timezone(timedelta(hours=-5)))
+        assert build_time_sync_payload(now)[5] == 7
+
+    def test_timezone_byte_clamped(self) -> None:
+        """Offsets outside UTC-12..UTC+14 are clamped to 0..26."""
+        now = datetime(2026, 1, 15, 12, 0, tzinfo=timezone(timedelta(hours=-13)))
+        assert build_time_sync_payload(now)[5] == 0
+
+    def test_naive_datetime_uses_system_local(self) -> None:
+        """Naive or missing datetime falls back to a valid system-local offset."""
+        assert 0 <= build_time_sync_payload()[5] <= 26
+        assert 0 <= build_time_sync_payload(datetime(2026, 1, 15, 12, 0))[5] <= 26
 
     def test_seconds_encoding(self) -> None:
-        """Middle 4 bytes encode seconds since Petkit epoch, big-endian."""
-        fake_time = PETKIT_EPOCH_OFFSET + 0x01020304
-        with patch("custom_components.petkit_ble.protocol.time") as mock_time:
-            mock_time.time.return_value = fake_time
-            result = build_time_sync_payload()
-        assert result[1] == 0x01
-        assert result[2] == 0x02
-        assert result[3] == 0x03
-        assert result[4] == 0x04
+        """Middle 4 bytes encode seconds since Petkit epoch (UTC), big-endian."""
+        now = datetime.fromtimestamp(PETKIT_EPOCH_OFFSET + 0x01020304, tz=UTC)
+        result = build_time_sync_payload(now)
+        assert result[1:5] == [0x01, 0x02, 0x03, 0x04]
+
+    def test_seconds_independent_of_timezone(self) -> None:
+        """The same instant yields the same seconds regardless of timezone."""
+        instant = datetime(2026, 7, 15, 12, 0, tzinfo=UTC)
+        local = instant.astimezone(timezone(timedelta(hours=2)))
+        assert build_time_sync_payload(instant)[1:5] == build_time_sync_payload(local)[1:5]
 
 
 class TestBuildInitPayload:
