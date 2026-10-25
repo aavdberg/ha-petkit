@@ -643,7 +643,7 @@ class PetkitBleCoordinator(DataUpdateCoordinator[PetkitFountainData]):
         if device is None:
             self._log_unreachable_diagnostics()
             return None
-        return PetkitBleClient(device)
+        return PetkitBleClient(device, now_fn=dt_util.now)
 
     async def _async_update_data(self) -> PetkitFountainData:
         """Fetch the latest data from the fountain."""

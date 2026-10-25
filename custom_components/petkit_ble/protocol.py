@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import struct
-import time
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 from .const import CTW3_ALIASES, PETKIT_EPOCH_OFFSET
@@ -12,20 +12,32 @@ if TYPE_CHECKING:
     from .ble_client import PetkitFountainData
 
 
-def build_time_sync_payload() -> list[int]:
+def build_time_sync_payload(now: datetime | None = None) -> list[int]:
     """Build the 6-byte payload for CMD 84 (set device time).
 
-    Layout: [0, sec>>24, sec>>16, sec>>8, sec, 13]
-    where sec = seconds since the Petkit epoch (2000-01-01 UTC).
+    Layout: [0, sec>>24, sec>>16, sec>>8, sec, tz]
+    where sec = seconds since the Petkit epoch (2000-01-01 UTC) and
+    tz = local UTC offset in whole hours + 12 (see docs/W5_BLE_PROTOCOL.md).
+
+    The device evaluates its DND and LED schedules in local time, so the
+    offset must match the user's timezone (including DST). ``now`` should be
+    a timezone-aware datetime in the Home Assistant timezone; if omitted,
+    the system local timezone is used.
     """
-    sec = int(time.time()) - PETKIT_EPOCH_OFFSET
+    if now is None or now.tzinfo is None:
+        now = datetime.now().astimezone()
+    sec = int(now.timestamp()) - PETKIT_EPOCH_OFFSET
+    offset = now.utcoffset()
+    offset_hours = round(offset.total_seconds() / 3600) if offset is not None else 0
+    # Valid real-world offsets are UTC-12 .. UTC+14 -> 0 .. 26
+    tz_byte = max(0, min(26, offset_hours + 12))
     return [
         0,
         (sec >> 24) & 0xFF,
         (sec >> 16) & 0xFF,
         (sec >> 8) & 0xFF,
         sec & 0xFF,
-        13,
+        tz_byte,
     ]
 
 

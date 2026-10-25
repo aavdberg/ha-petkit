@@ -7,6 +7,7 @@ import contextlib
 import logging
 import math
 import struct
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -221,9 +222,15 @@ class PetkitFountainData:
 class PetkitBleClient:
     """BLE client for Petkit water fountains implementing the Petkit protocol."""
 
-    def __init__(self, ble_device: BLEDevice) -> None:
-        """Initialise with a discovered BLE device."""
+    def __init__(self, ble_device: BLEDevice, now_fn: Callable[[], datetime] | None = None) -> None:
+        """Initialise with a discovered BLE device.
+
+        ``now_fn`` returns the current timezone-aware time used for the CMD 84
+        clock sync (pass Home Assistant's ``dt_util.now`` so the device uses
+        the configured HA timezone). Defaults to the system local time.
+        """
         self._device = ble_device
+        self._now_fn = now_fn
         self._client: BleakClient | None = None
         self._rx_buf: bytearray = bytearray()
         self._rx_queue: asyncio.Queue[bytes] = asyncio.Queue()
@@ -461,7 +468,7 @@ class PetkitBleClient:
         _LOGGER.debug("Authentication complete for %s", alias)
 
         # CMD 84 — set device time
-        time_bytes = build_time_sync_payload()
+        time_bytes = build_time_sync_payload(self._now_fn() if self._now_fn else None)
         await self._send_and_wait(CMD_SET_TIME, FRAME_TYPE_SEND, time_bytes)
         await asyncio.sleep(AUTH_STEP_DELAY)
 
