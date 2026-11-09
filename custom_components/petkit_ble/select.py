@@ -61,7 +61,7 @@ class PetkitModeSelect(PetkitBleEntity, SelectEntity):
     async def async_select_option(self, option: str) -> None:
         """Send CMD 220 to change mode.
 
-        W5/CTW2 use [power, mode] (mode 1=normal, 2=smart), matching CMD 210.
+        Non-CTW3 devices use [power, mode] (mode 1=normal, 2=smart), matching CMD 210.
         CTW3 uses a 3-byte layout [power, suspend, mode] matching its CMD 210 response.
         """
         mode_int = _MODE_TO_INT[option]
@@ -74,7 +74,7 @@ class PetkitModeSelect(PetkitBleEntity, SelectEntity):
             # build_ctw3_select_mode_payload for the rationale.
             payload = build_ctw3_select_mode_payload(mode_int)
         else:
-            # Generic W5/CTW2: [power, mode]; selecting a mode implies power-on
+            # Non-CTW3: [power, mode]; selecting a mode implies power-on
             payload = build_change_mode_payload(1, mode_int)
 
         _LOGGER.debug(

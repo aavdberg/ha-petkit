@@ -187,8 +187,8 @@ The `isLock` byte is only present on firmware versions that support it.
 ### Write Commands
 
 #### CMD 220 — Change Device Mode
-- **Request payload:** 2 bytes — `[mode, submode]`
-- **Modes:** 0=off, 1=normal, 2=smart
+- **Request payload:** 2 bytes — `[power, mode]`, matching bytes 0-1 of the CMD 210 response
+- **Values:** `[1, 1]`=on in normal mode, `[1, 2]`=on in smart mode, `[0, 0]`=off
 - **Response:** `data[0] == 0` indicates failure
 
 #### CMD 221 — Write All Settings

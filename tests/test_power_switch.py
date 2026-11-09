@@ -46,7 +46,7 @@ async def test_ctw3_power_payload(mode: int, power: int, expected: list[int]) ->
     ],
 )
 async def test_generic_power_payload(mode: int, power: int, expected: list[int]) -> None:
-    """W5/CTW2 power commands use [power, mode], keeping Normal and Smart distinct."""
+    """Non-CTW3 power commands use [power, mode], keeping Normal and Smart distinct."""
     switch = _switch(mode, is_ctw3=False)
     await switch._set_power(power)
     switch.coordinator.async_send_command.assert_awaited_once_with(CMD_SET_POWER_MODE, expected)
