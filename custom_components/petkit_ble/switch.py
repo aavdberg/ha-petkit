@@ -70,8 +70,8 @@ class PetkitPowerSwitch(PetkitBleEntity, SwitchEntity):
     async def _set_power(self, power_state: int) -> None:
         """Send CMD 220 with the desired power state.
 
-        Per the reverse-engineered W5 protocol, CMD 220 byte[0] encodes power and mode:
-        0=off, 1=normal (on), 2=smart (on). CTW3 uses [power, suspend, mode] (3 bytes).
+        W5/CTW2 use [power, mode] (mode 1=normal, 2=smart), matching CMD 210.
+        CTW3 uses [power, suspend, mode] (3 bytes).
         """
         data = self.coordinator.data
 
@@ -82,12 +82,12 @@ class PetkitPowerSwitch(PetkitBleEntity, SwitchEntity):
             suspend = power_state
             payload = build_ctw3_mode_payload(power_state, suspend, raw_mode)
         else:
-            # Generic W5/CTW2: byte[0] encodes power+mode (0=off, 1=normal, 2=smart)
+            # Generic W5/CTW2: [power, mode] (mode 1=normal, 2=smart)
             if power_state == 0:
-                payload = build_change_mode_payload(0)
+                payload = build_change_mode_payload(0, 0)
             else:
                 raw_mode = data.mode if data is not None and data.mode in (1, 2) else 1
-                payload = build_change_mode_payload(raw_mode)
+                payload = build_change_mode_payload(1, raw_mode)
 
         success = await self.coordinator.async_send_command(CMD_SET_POWER_MODE, payload)
         if success:
