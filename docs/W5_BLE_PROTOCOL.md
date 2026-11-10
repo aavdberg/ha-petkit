@@ -120,7 +120,7 @@ FA FC FD <cmd:1> <type:1> <seq:1> <len_lo:1> <len_hi:1> [data:N] FB
 | Byte | Field | Values |
 |---|---|---|
 | 0 | powerStatus | 0=off, 1=on |
-| 1 | mode | 0=off, 1=normal, 2=smart |
+| 1 | mode | 1=normal, 2=smart; 0 after an off sent as `[0, 0]` |
 | 2 | nightNoDisturb | 0/1 |
 | 3 | breakdownWarning | 0/1 |
 | 4 | **lackWarning** | **0=OK, 1=LOW WATER** |
@@ -187,8 +187,8 @@ The `isLock` byte is only present on firmware versions that support it.
 ### Write Commands
 
 #### CMD 220 — Change Device Mode
-- **Request payload:** 2 bytes — `[mode, submode]`
-- **Modes:** 0=off, 1=normal, 2=smart
+- **Request payload:** 2 bytes — `[power, mode]`, matching bytes 0-1 of the CMD 210 response
+- **Values:** `[1, 1]`=on in normal mode, `[1, 2]`=on in smart mode, `[0, mode]`=off keeping the mode
 - **Response:** `data[0] == 0` indicates failure
 
 #### CMD 221 — Write All Settings

@@ -160,12 +160,12 @@ def build_settings_payload_generic(
     ]
 
 
-def build_change_mode_payload(mode: int, submode: int = 0) -> list[int]:
-    """Build the payload for CMD 220 (change mode) for W5/CTW2 devices.
+def build_change_mode_payload(power: int, mode: int) -> list[int]:
+    """Build the payload for CMD 220 (change mode) for non-CTW3 devices.
 
-    Layout: [mode, submode]
+    Layout: [power, mode], matching bytes 0-1 of the CMD 210 response.
     """
-    return [mode, submode]
+    return [power, mode]
 
 
 def build_ctw3_mode_payload(power: int, suspend: int, mode: int) -> list[int]:

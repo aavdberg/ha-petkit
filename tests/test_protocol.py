@@ -344,9 +344,10 @@ class TestBuildModePayload:
     """Tests for mode payload builders."""
 
     def test_w5_mode_payload(self) -> None:
-        """W5 mode payload is [mode, submode]."""
-        assert build_change_mode_payload(1, 0) == [1, 0]
-        assert build_change_mode_payload(2, 1) == [2, 1]
+        """W5 mode payload is [power, mode]."""
+        assert build_change_mode_payload(1, 1) == [1, 1]
+        assert build_change_mode_payload(1, 2) == [1, 2]
+        assert build_change_mode_payload(0, 1) == [0, 1]
 
     def test_ctw3_mode_payload(self) -> None:
         """CTW3 mode payload is [power, suspend, mode]."""
