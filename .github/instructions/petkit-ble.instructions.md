@@ -68,7 +68,7 @@ CTW2   → CTW2
 | 211 | `CMD_GET_CONFIG` | Read | Settings; requested for CTW3, but firmware 111 is known not to respond |
 | 221 | `CMD_WRITE_SETTINGS` | Write | 12-byte CTW3 settings payload; includes smart/battery detection flags |
 | 66  | `CMD_GET_BATTERY` | Read | Battery voltage (non-CTW3) |
-| 220 | `CMD_SET_MODE` | Write | [power, mode]: [1, 1]=normal, [1, 2]=smart, [0, 0]=off |
+| 220 | `CMD_SET_MODE` | Write | [power, mode]: [1, 1]=normal, [1, 2]=smart, [0, mode]=off keeping the mode |
 | 222 | `CMD_RESET_FILTER` | Write | Empty payload; resets filter % to 100 |
 
 ## State Payload Layouts

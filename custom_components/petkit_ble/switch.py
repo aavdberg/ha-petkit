@@ -74,20 +74,18 @@ class PetkitPowerSwitch(PetkitBleEntity, SwitchEntity):
         CTW3 uses [power, suspend, mode] (3 bytes).
         """
         data = self.coordinator.data
+        raw_mode = data.mode if data is not None and data.mode in (1, 2) else 1
 
         if data is not None and data.is_ctw3:
             # CTW3: [power, suspend, mode] via protocol helper. suspend=1 keeps the
             # fountain running in both modes; suspend=0 leaves it suspended.
-            raw_mode = data.mode if data.mode in (1, 2) else 1
             suspend = power_state
             payload = build_ctw3_mode_payload(power_state, suspend, raw_mode)
         else:
             # Non-CTW3: [power, mode] (mode 1=normal, 2=smart)
-            if power_state == 0:
-                payload = build_change_mode_payload(0, 0)
-            else:
-                raw_mode = data.mode if data is not None and data.mode in (1, 2) else 1
-                payload = build_change_mode_payload(1, raw_mode)
+            # Off keeps the mode byte: [0, 0] leaves the device in mode 0, which
+            # runs like Smart the next time it powers on.
+            payload = build_change_mode_payload(power_state, raw_mode)
 
         success = await self.coordinator.async_send_command(CMD_SET_POWER_MODE, payload)
         if success:

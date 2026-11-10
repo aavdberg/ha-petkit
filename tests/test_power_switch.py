@@ -41,8 +41,10 @@ async def test_ctw3_power_payload(mode: int, power: int, expected: list[int]) ->
     [
         (1, 1, [1, 1]),
         (2, 1, [1, 2]),
-        (1, 0, [0, 0]),
-        (2, 0, [0, 0]),
+        (1, 0, [0, 1]),
+        (2, 0, [0, 2]),
+        (0, 1, [1, 1]),
+        (0, 0, [0, 1]),
     ],
 )
 async def test_generic_power_payload(mode: int, power: int, expected: list[int]) -> None:
